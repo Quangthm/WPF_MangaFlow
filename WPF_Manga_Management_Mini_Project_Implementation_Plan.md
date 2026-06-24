@@ -2,89 +2,143 @@
 
 **Target project:** WPF desktop mini-project based on MangaFlow  
 **Database:** `WPFMangaManagementDB`  
+**Latest direction:** keep `Series` as the user-facing CRUD entity, but restore `SeriesProposal` as the internal submitted proposal/review version table.  
 **Core required flows:**
 
 1. **Series CRUD → Editor approve/reject → Editorial Board vote**
 2. **Chapter CRUD → Editor approve/reject**
 
-This plan assumes the mini-project should stay close to the existing MangaFlow design while cutting page-level, task, AI, notification, ranking, and full audit complexity.
+This plan assumes the mini-project should stay close to the existing MangaFlow design while cutting page-level production workflow, assistant task workflow, AI, notification, ranking, and full audit complexity.
 
 ---
 
 ## 1. Direction Summary
 
-Your chosen direction is strong because it keeps the important MangaFlow concepts:
+The updated direction is stronger for implementation speed because it matches the old MangaFlow workflow model more closely:
 
-- `Series` remains the main workflow entity.
-- `SeriesProposal` is cut for the WPF mini-project.
-- `Series.proposal_file_id` stores the current submitted proposal document.
-- `FileResource` remains the file metadata abstraction.
+- `Series` remains the main user-facing entity.
+- The WPF UI should still feel like **Series CRUD**, not Proposal CRUD.
+- `SeriesProposal` is restored as the submitted proposal/version record.
+- `SeriesProposal` stores the proposal document, proposal version, editor review result, comments, and markup file.
+- `SeriesEditorialReview` is removed because `SeriesProposal` already contains editor review fields.
+- `Series.proposal_file_id` is no longer needed because proposal files belong to `SeriesProposal.proposal_file_id`.
+- `Series.cover_file_id` remains on `Series` because cover is current series profile metadata.
 - Genres/tags stay normalized through `Genre`, `Tag`, `SeriesGenre`, and `SeriesTag`.
-- `SeriesEditorialReview` stores editor actions for the series workflow.
-- `SeriesBoardPoll` + `SeriesBoardVote` preserve actual board voting.
-- `Chapter` + `ChapterEditorialReview` support chapter CRUD and editor review.
+- `SeriesBoardPoll` and `SeriesBoardVote` remain tied to `series_id`, not `series_proposal_id`.
+- Board voting still uses real votes: `APPROVE`, `REJECT`, and `ABSTAIN`.
+- `Chapter` and `ChapterEditorialReview` support chapter CRUD and editor review.
 - Audit logs are intentionally excluded to keep the WPF project smaller.
 
-This is a good balance between reuse and scope control.
+The key interpretation is:
+
+```text
+UI concept:
+Series CRUD
+
+Database workflow concept:
+Series = current editable series profile
+SeriesProposal = submitted proposal version used for editor/board review
+```
 
 ---
 
 ## 2. Current Schema Scope
 
-The selected mini-project schema includes:
+The selected mini-project schema should include:
 
 | Area | Tables / Objects |
 |---|---|
 | Auth | `auth.Roles`, `auth.Users` |
 | Files | `manga.FileResource` |
-| Series | `manga.Series`, `manga.SeriesContributor`, `manga.SeriesEditorialReview` |
+| Series | `manga.Series`, `manga.SeriesProposal`, `manga.SeriesContributor` |
 | Genre/Tag | `manga.Genre`, `manga.SeriesGenre`, `manga.Tag`, `manga.SeriesTag` |
 | Chapter | `manga.Chapter`, `manga.ChapterEditorialReview` |
 | Board | `manga.SeriesBoardPoll`, `manga.SeriesBoardVote`, `manga.vw_SeriesBoardPollVoteSummary` |
 
-The schema already includes `proposal_file_id` on `manga.Series`, which is important because `SeriesProposal` is removed but proposal documents still need to be linked through `FileResource`.
+The selected schema should **not** include:
+
+| Removed / excluded object | Reason |
+|---|---|
+| `manga.SeriesEditorialReview` | Replaced by `SeriesProposal.reviewed_by_user_id`, `reviewed_at_utc`, `comments`, and `markup_file_id` |
+| `Series.proposal_file_id` | Proposal file belongs to each submitted `SeriesProposal` version |
+| `ChapterPage` | Page-level workflow cut from WPF scope |
+| `ChapterPageVersion` | Replaced by `Chapter.chapter_file_id` for the mini-project |
+| `PageRegion` | Page annotation/AI workflow cut |
+| `ChapterPageAnnotation` | Out of scope |
+| `ChapterPageTask` | Assistant task workflow out of scope |
+| `audit.AuditEvent` | Optional; intentionally cut for time |
+| Notification/ranking/AI tables | Out of scope |
 
 ---
 
 ## 3. Key Simplification Decisions
 
-### 3.1 `SeriesProposal` is removed
+### 3.1 `SeriesProposal` is restored
 
-Full MangaFlow uses `SeriesProposal` to preserve proposal version history. The WPF mini-project does not need that history.
+Full MangaFlow uses `SeriesProposal` to preserve proposal submission history. This is useful even in the WPF mini-project because it avoids creating a new custom `SeriesEditorialReview` table.
 
 For WPF:
 
 ```text
 Series = current editable series profile
-       + current proposal document
-       + current workflow status
+SeriesProposal = submitted snapshot/version for review
 ```
 
-When the editor requests changes:
+When the Mangaka submits a series, the system creates a new `SeriesProposal` row.
+
+When the editor requests changes, the latest proposal becomes `REVISION_REQUESTED`, while the main series returns to `PROPOSAL_DRAFT` so the Mangaka can edit it.
+
+### 3.2 `Series` does not need `REVISION_REQUESTED`
+
+The project intentionally keeps `Series.status_code` simple.
+
+When the editor requires changes:
 
 ```text
-UNDER_EDITORIAL_REVIEW → PROPOSAL_DRAFT
+SeriesProposal.status_code = REVISION_REQUESTED
+Series.status_code = PROPOSAL_DRAFT
 ```
 
-The Mangaka edits the same `Series` row and resubmits.
+This means `PROPOSAL_DRAFT` has two meanings in the WPF mini-project:
 
-### 3.2 No `REVISION_REQUESTED` status for Series
-
-The project intentionally does not add `REVISION_REQUESTED` to `Series.status_code`.
-
-Instead:
-
-| Editor action | New status |
+| Meaning | Context |
 |---|---|
-| Requires changes | `PROPOSAL_DRAFT` |
-| Passes to board | `UNDER_BOARD_REVIEW` |
-| Cancels/rejects hard | `CANCELLED` |
+| New draft | Series has never been submitted |
+| Returned draft | Latest proposal was reviewed and marked `REVISION_REQUESTED` |
 
-Editor comments are stored in `manga.SeriesEditorialReview`.
+That is acceptable because the UI can show the latest proposal review comments beside the editable series form.
 
-### 3.3 Board voting remains real
+### 3.3 Board poll remains tied to `series_id`
 
-The mini-project should not use one simple “Board Approve” button only. It should show real board voting:
+`SeriesBoardPoll` should keep:
+
+```text
+series_id
+```
+
+Do **not** add:
+
+```text
+series_proposal_id
+```
+
+For the WPF mini-project, this is simpler and consistent with the selected schema.
+
+The backend should always resolve the active/latest proposal when needed:
+
+```sql
+SELECT TOP (1)
+    sp.*
+FROM manga.SeriesProposal sp
+WHERE sp.series_id = @series_id
+ORDER BY sp.proposal_version_no DESC;
+```
+
+When closing a board poll, the backend should update the latest proposal for that series whose status is `UNDER_BOARD_REVIEW`.
+
+### 3.4 Board voting remains real
+
+The mini-project should not use a single “Board Approve” button. It should demonstrate actual board voting:
 
 ```text
 Board Chief opens poll
@@ -93,11 +147,11 @@ Board Chief closes poll
 System computes result from votes
 ```
 
-The existing `vw_SeriesBoardPollVoteSummary` supports this well.
+The existing `vw_SeriesBoardPollVoteSummary` supports the vote summary and result computation.
 
-### 3.4 Chapter page workflow is cut
+### 3.5 Chapter page workflow is cut
 
-The WPF mini-project uses `Chapter.chapter_file_id` as the simplified replacement for full page/page-version workflow.
+The WPF mini-project uses `Chapter.chapter_file_id` as the simplified replacement for the full page/page-version workflow.
 
 Cut from WPF scope:
 
@@ -120,8 +174,8 @@ Because current MangaFlow already uses Clean Architecture and CQRS, the WPF proj
 ```text
 WPF Views
 → WPF ViewModels
-→ API client / Application service adapter
-→ Existing API endpoints or new WPF mini API endpoints
+→ Typed API clients
+→ Existing or WPF-mini API endpoints
 → MediatR commands/queries
 → Application handlers
 → Infrastructure repositories / stored procedure wrappers
@@ -130,7 +184,7 @@ WPF Views
 
 ### 4.2 Why this is preferred
 
-This lets the WPF project reuse the current backend shape instead of rewriting business logic in the WPF app.
+This lets the WPF project reuse the current backend shape instead of rewriting business logic inside the WPF app.
 
 The WPF app should mainly replace the Blazor UI layer:
 
@@ -153,7 +207,7 @@ WPF ViewModels
 → SQL Server
 ```
 
-This is faster but less aligned with current MangaFlow. Use it only if the subject does not require API or the existing API is too tied to full web workflows.
+This is faster but less aligned with MangaFlow. Use it only if the subject does not require API or if adapting the existing API costs too much time.
 
 ---
 
@@ -169,11 +223,11 @@ Check whether the current API/Application already has usable commands/queries fo
 |---|---|
 | Create series draft | `CreateSeriesDraftCommand` / handler |
 | Update series draft | `UpdateSeriesDraftCommand` / handler |
-| Submit series proposal/review | Current proposal submit flow may need adaptation because WPF cuts `SeriesProposal` |
-| Editor proposal review | Current editor review may need adaptation to operate on `Series` directly |
-| Board poll open/close/vote | Likely reusable conceptually |
+| Submit series proposal | Existing `SubmitSeriesProposal` flow should now be highly reusable |
+| Editor proposal review | Existing editor proposal review flow should be reusable/adaptable |
+| Board poll open/close/vote | Reusable conceptually; poll stays tied to `series_id` |
 | Genre/tag lookup | Likely reusable |
-| File upload / FileResource creation | Reusable concept, but WPF file selection may need adapter |
+| FileResource creation | Reusable concept; WPF uses local file metadata instead of real Cloudinary upload if needed |
 | Chapter CRUD | May need new simplified commands |
 | Chapter editorial review | May be reusable or partially reusable |
 
@@ -185,6 +239,7 @@ Look for DTOs that can be reused or adapted:
 |---|---|
 | `SeriesDto` | High |
 | `SeriesDetailDto` | High |
+| `SeriesProposalDto` | High |
 | `GenreDto` | High |
 | `TagDto` | High |
 | `FileResourceDto` | Medium |
@@ -193,18 +248,18 @@ Look for DTOs that can be reused or adapted:
 | `ChapterDto` | Medium |
 | `ChapterReviewDto` | Medium |
 
-### 5.3 Inspect current assumptions that conflict with WPF mini schema
+### 5.3 Inspect assumptions that may conflict with WPF mini schema
 
 The existing MangaFlow system may still assume:
 
-- `SeriesProposal` exists.
-- Proposal review works through `series_proposal_id`.
-- Proposal status is separate from series status.
-- Cloudinary upload is done through Web/API form upload.
-- Blazor-specific `returnUrl` navigation exists.
+- Full user table fields such as email, display name, account status, portfolio, and avatar.
+- Full Cloudinary upload from Blazor/API multipart forms.
+- Full proposal workflow with extra fields not present in the WPF mini schema.
+- Proposal review screens are tied to web navigation and `returnUrl`.
 - Page/version/chapter workspace links exist.
+- Authorization uses web authentication/claims instead of WPF session state.
 
-For WPF, these need to be ignored, adapted, or replaced.
+For WPF, these need to be ignored, adapted, or replaced with mini-specific endpoints/handlers.
 
 ---
 
@@ -214,52 +269,61 @@ For WPF, these need to be ignored, adapted, or replaced.
 
 Try to keep:
 
-- Auth role/user lookup logic.
+- Role/user lookup logic.
 - Password hash verification if login is implemented.
 - Genre/tag reference data query.
 - FileResource helper/service shape.
-- Series create/update command validation ideas.
+- Series create/update validation ideas.
+- SeriesProposal submission and review workflow ideas.
 - Board poll/vote workflow logic.
 - Chapter review decision logic.
 - Stored procedure transaction style.
 
-### 6.2 Add WPF-mini-specific workflows
+### 6.2 Reuse or adapt `SeriesProposal` commands
 
-Because `SeriesProposal` is removed, create mini-specific commands/endpoints instead of forcing the full MangaFlow proposal workflow.
+Because `SeriesProposal` is restored, the WPF mini-project can reuse more of the old MangaFlow proposal pipeline.
 
-Recommended command names:
+Recommended workflow commands:
 
 ```text
-CreateWpfSeriesDraftCommand
-UpdateWpfSeriesDraftCommand
-SubmitWpfSeriesForEditorialReviewCommand
-ReturnWpfSeriesToDraftCommand
-PassWpfSeriesToBoardCommand
-CancelWpfSeriesCommand
-OpenWpfSeriesBoardPollCommand
-CastWpfSeriesBoardVoteCommand
-CloseWpfSeriesBoardPollCommand
-CreateWpfChapterCommand
-UpdateWpfChapterCommand
-DeleteWpfChapterCommand
-SubmitWpfChapterForReviewCommand
-ApproveWpfChapterCommand
-ReturnWpfChapterForRevisionCommand
-CancelWpfChapterCommand
+CreateSeriesDraftCommand
+UpdateSeriesDraftCommand
+CancelSeriesDraftCommand
+SubmitSeriesProposalCommand
+RequestSeriesProposalRevisionCommand
+PassSeriesProposalToBoardCommand
+CancelSeriesProposalReviewCommand
+OpenSeriesBoardPollCommand
+CastSeriesBoardVoteCommand
+CloseSeriesBoardPollCommand
+CreateChapterDraftCommand
+UpdateChapterDraftCommand
+DeleteChapterDraftCommand
+SubmitChapterForReviewCommand
+ApproveChapterCommand
+ReturnChapterForRevisionCommand
+CancelChapterCommand
 ```
 
-The `Wpf` prefix is optional. If this is a separate mini API/project, use simpler names.
+If existing commands are too tied to the full project, create WPF-mini versions under a separate folder/namespace, for example:
 
-### 6.3 Avoid changing full MangaFlow if possible
+```text
+Application/Features/WpfMini/Series
+Application/Features/WpfMini/Proposals
+Application/Features/WpfMini/Board
+Application/Features/WpfMini/Chapters
+```
+
+### 6.3 Avoid breaking full MangaFlow
 
 If the WPF mini-project lives beside the full MangaFlow solution, do not break the full web app just to support WPF.
 
 Better options:
 
-1. Create a separate mini API area, for example `/api/wpf/series`.
-2. Create separate handlers under `Application/Features/WpfMini`.
-3. Use the separate `WPFMangaManagementDB`.
-4. Keep full MangaFlow commands untouched.
+1. Create a separate mini API route area, for example `/api/wpf/...`.
+2. Create WPF-mini handlers that target `WPFMangaManagementDB`.
+3. Keep full MangaFlow commands untouched if their schema assumptions differ.
+4. Reuse logic patterns, DTO shapes, and validation rules even when direct code reuse is not possible.
 
 ---
 
@@ -278,6 +342,7 @@ MangaManagementSystem.WpfMini/
 │   ├── CurrentUserSession.cs
 │   ├── LookupModels.cs
 │   ├── SeriesModels.cs
+│   ├── SeriesProposalModels.cs
 │   ├── ChapterModels.cs
 │   └── BoardModels.cs
 │
@@ -286,6 +351,7 @@ MangaManagementSystem.WpfMini/
 │   ├── AuthApiClient.cs
 │   ├── ReferenceDataApiClient.cs
 │   ├── SeriesApiClient.cs
+│   ├── SeriesProposalApiClient.cs
 │   ├── BoardApiClient.cs
 │   ├── ChapterApiClient.cs
 │   ├── FilePickerService.cs
@@ -296,7 +362,7 @@ MangaManagementSystem.WpfMini/
 │   ├── LoginViewModel.cs
 │   ├── MangakaSeriesListViewModel.cs
 │   ├── SeriesEditorViewModel.cs
-│   ├── EditorSeriesReviewViewModel.cs
+│   ├── EditorProposalReviewViewModel.cs
 │   ├── BoardPollListViewModel.cs
 │   ├── BoardPollDetailViewModel.cs
 │   ├── ChapterListViewModel.cs
@@ -307,7 +373,7 @@ MangaManagementSystem.WpfMini/
 │   ├── ShellView.xaml
 │   ├── MangakaSeriesListView.xaml
 │   ├── SeriesEditorView.xaml
-│   ├── EditorSeriesReviewView.xaml
+│   ├── EditorProposalReviewView.xaml
 │   ├── BoardPollListView.xaml
 │   ├── BoardPollDetailView.xaml
 │   ├── ChapterListView.xaml
@@ -347,21 +413,25 @@ Features:
 - Search by title.
 - Filter by status.
 - Create new draft.
-- Edit series if `PROPOSAL_DRAFT`.
-- Delete/cancel draft if `PROPOSAL_DRAFT`.
+- Edit series if `Series.status_code = PROPOSAL_DRAFT`.
+- Delete/cancel draft if `Series.status_code = PROPOSAL_DRAFT`.
 - Submit for editorial review if valid.
+- Show latest proposal version/status if the series has been submitted before.
+- Show latest editor feedback when the latest proposal was marked `REVISION_REQUESTED`.
 
 Fields shown:
 
 - Title
 - Slug
-- Status
+- Series status
+- Latest proposal version number
+- Latest proposal status
 - Genres
 - Tags
 - Content language
 - Publication frequency
 - Cover file name
-- Proposal file name
+- Last submitted proposal file name
 - Last updated
 
 ### 8.2 Create/Edit Series screen
@@ -378,54 +448,72 @@ Fields:
 | Content language | Yes | `ja`, `en`, `vi` |
 | Publication frequency | Optional | `WEEKLY`, `MONTHLY`, `IRREGULAR` |
 | Cover file | Optional | `FileResource`, purpose `SERIES_COVER` |
-| Proposal file | Required before submit | `FileResource`, purpose `SERIES_PROPOSAL` |
+| Proposal file | Required only when submitting | `SeriesProposal.proposal_file_id`, purpose `SERIES_PROPOSAL` |
 
-Recommended validation:
+Important distinction:
 
-- Title not blank.
-- Synopsis not blank.
-- At least one genre selected.
-- Slug unique.
-- Proposal file required when submitting.
-- Cover file must be image type if selected.
-- Proposal file must be `.pdf`, `.doc`, or `.docx`.
+```text
+Saving a draft updates Series.
+Submitting a draft creates SeriesProposal.
+```
 
-### 8.3 Submit Series
+The proposal file should not be stored on `Series`.
+
+### 8.3 Submit Series Proposal
 
 Action:
 
 ```text
-PROPOSAL_DRAFT → UNDER_EDITORIAL_REVIEW
+Series.status_code: PROPOSAL_DRAFT → UNDER_EDITORIAL_REVIEW
+Create SeriesProposal: UNDER_EDITORIAL_REVIEW
 ```
 
 Backend should:
 
 1. Validate actor is Mangaka.
 2. Validate series belongs to Mangaka through `SeriesContributor`.
-3. Validate required profile fields.
-4. Validate at least one genre.
-5. Validate `proposal_file_id` exists and is active.
-6. Update `Series.status_code`.
+3. Validate `Series.status_code = PROPOSAL_DRAFT`.
+4. Validate required profile fields.
+5. Validate at least one genre.
+6. Validate proposal file exists and is active.
+7. Calculate next `proposal_version_no` as max version + 1.
+8. Insert `SeriesProposal` with:
+   - `series_id`
+   - `proposal_version_no`
+   - `proposal_title = Series.title`
+   - `synopsis_snapshot = Series.synopsis`
+   - `proposal_file_id`
+   - `status_code = UNDER_EDITORIAL_REVIEW`
+   - `submitted_by_user_id`
+9. Update `Series.status_code = UNDER_EDITORIAL_REVIEW`.
 
-### 8.4 Editor Series Review Queue
+### 8.4 Editor Proposal Review Queue
 
 Query:
 
 ```text
-Series.status_code = UNDER_EDITORIAL_REVIEW
+SeriesProposal.status_code = UNDER_EDITORIAL_REVIEW
 ```
+
+Join to `Series` to show current series metadata:
+
+- cover file
+- genres/tags
+- content language
+- publication frequency
+- current series status
 
 Editor actions:
 
-| Action | DB effect |
-|---|---|
-| Return for changes | Insert `SeriesEditorialReview` with `REVISION_REQUESTED`; set `Series.status_code = PROPOSAL_DRAFT` |
-| Pass to board | Insert `SeriesEditorialReview` with `PASSED_TO_BOARD`; set `Series.status_code = UNDER_BOARD_REVIEW` |
-| Cancel | Insert `SeriesEditorialReview` with `CANCELLED`; set `Series.status_code = CANCELLED` |
+| Action | `SeriesProposal` effect | `Series` effect |
+|---|---|---|
+| Request changes | `status_code = REVISION_REQUESTED`, set reviewer/comments/markup | `status_code = PROPOSAL_DRAFT` |
+| Pass to board | `status_code = UNDER_BOARD_REVIEW`, set reviewer/comments/markup | `status_code = UNDER_BOARD_REVIEW` |
+| Cancel | `status_code = CANCELLED`, set reviewer/comments/markup | `status_code = CANCELLED` |
 
 Important UI note:
 
-Even though the review decision code is `REVISION_REQUESTED`, the `Series.status_code` returns to `PROPOSAL_DRAFT`. This keeps the status model simple while still storing review intent.
+Even though the proposal status is `REVISION_REQUESTED`, the series status returns to `PROPOSAL_DRAFT`. The Mangaka edits the same `Series` row and resubmits, creating a new `SeriesProposal` version.
 
 ### 8.5 Board Poll List
 
@@ -438,7 +526,7 @@ OR open polls from SeriesBoardPoll
 
 Board Chief can:
 
-- Open `START_SERIALIZATION` poll.
+- Open `START_SERIALIZATION` poll for a series.
 - Enter `poll_reason`.
 - Select official publication frequency.
 - Close poll.
@@ -450,16 +538,24 @@ Board Member/Chief can:
 - Vote `REJECT` with required reason.
 - Vote `ABSTAIN`.
 
+Because `SeriesBoardPoll` stores `series_id`, the UI should display the latest `SeriesProposal` for that series as read-only review context.
+
 ### 8.6 Close Board Poll
 
 When closing poll:
 
-1. Set `poll_status_code = CLOSED`.
+1. Set `SeriesBoardPoll.poll_status_code = CLOSED`.
 2. Read `vw_SeriesBoardPollVoteSummary`.
-3. Apply result:
-   - `APPROVED` → `Series.status_code = SERIALIZED`
-   - `REJECTED` → `Series.status_code = CANCELLED`
-   - `NO_DECISION` → keep `UNDER_BOARD_REVIEW`
+3. Find latest `SeriesProposal` for the poll's `series_id` with `status_code = UNDER_BOARD_REVIEW`.
+4. Apply result:
+
+| Computed result | `SeriesProposal` effect | `Series` effect |
+|---|---|---|
+| `APPROVED` | `status_code = APPROVED` | `status_code = SERIALIZED` |
+| `REJECTED` | `status_code = CANCELLED` | `status_code = CANCELLED` |
+| `NO_DECISION` | Keep `UNDER_BOARD_REVIEW` | Keep `UNDER_BOARD_REVIEW` |
+
+For the mini-project demo, board rejection can mean the series is cancelled. Editor revision already covers the “return to draft and edit” path.
 
 ---
 
@@ -505,7 +601,7 @@ Backend should:
 1. Validate actor is Mangaka contributor.
 2. Validate series is `SERIALIZED`.
 3. Validate chapter file exists.
-4. Update `Chapter.status_code`.
+4. Update `Chapter.status_code = UNDER_REVIEW`.
 
 ### 9.3 Editor Chapter Review Queue
 
@@ -539,7 +635,7 @@ file_size_bytes
 sha256_hash
 ```
 
-For WPF mini-project, use local test values instead of actual Cloudinary upload.
+For the WPF mini-project, use local test values instead of actual Cloudinary upload.
 
 When the user selects a local file:
 
@@ -552,23 +648,32 @@ file_size_bytes = FileInfo.Length
 sha256_hash = calculated SHA-256
 ```
 
-This keeps the schema compatible without requiring Cloudinary setup.
+Recommended file purposes:
+
+| Purpose | Used by |
+|---|---|
+| `SERIES_COVER` | `Series.cover_file_id` |
+| `SERIES_PROPOSAL` | `SeriesProposal.proposal_file_id` |
+| `EDITORIAL_ATTACHMENT` | `SeriesProposal.markup_file_id`, `ChapterEditorialReview.markup_file_id` |
+| `CHAPTER_PAGE_VERSION` | `Chapter.chapter_file_id` in the mini-project, even though the name comes from full MangaFlow |
+
+If the purpose name feels confusing for chapter package files, either reuse `CHAPTER_PAGE_VERSION` for compatibility or add `CHAPTER_PACKAGE` to the check constraint.
 
 ---
 
 ## 11. Stored Procedure / Command Plan
 
-### 11.1 Series commands
+### 11.1 Series + proposal commands
 
 | Command | Purpose |
 |---|---|
 | `CreateSeriesDraft` | Insert `Series`, `SeriesGenre`, `SeriesTag`, creator `SeriesContributor` |
-| `UpdateSeriesDraft` | Update profile and replace genre/tag links while `PROPOSAL_DRAFT` |
+| `UpdateSeriesDraft` | Update profile and replace genre/tag links while `Series.status_code = PROPOSAL_DRAFT` |
 | `DeleteSeriesDraft` / `CancelSeriesDraft` | Remove or cancel draft |
-| `SubmitSeriesForEditorialReview` | `PROPOSAL_DRAFT → UNDER_EDITORIAL_REVIEW` |
-| `ReturnSeriesToDraft` | Editor requires changes: insert review, `UNDER_EDITORIAL_REVIEW → PROPOSAL_DRAFT` |
-| `PassSeriesToBoard` | Insert review, `UNDER_EDITORIAL_REVIEW → UNDER_BOARD_REVIEW` |
-| `CancelSeriesFromEditorialReview` | Insert review, `UNDER_EDITORIAL_REVIEW → CANCELLED` |
+| `SubmitSeriesProposal` | Create new `SeriesProposal` version and move Series to `UNDER_EDITORIAL_REVIEW` |
+| `RequestSeriesProposalRevision` | Editor requests changes: proposal `REVISION_REQUESTED`, series `PROPOSAL_DRAFT` |
+| `PassSeriesProposalToBoard` | Proposal `UNDER_BOARD_REVIEW`, series `UNDER_BOARD_REVIEW` |
+| `CancelSeriesProposalReview` | Proposal `CANCELLED`, series `CANCELLED` |
 
 ### 11.2 Board commands
 
@@ -577,7 +682,7 @@ This keeps the schema compatible without requiring Cloudinary setup.
 | `OpenSeriesBoardPoll` | Create `SeriesBoardPoll` for `UNDER_BOARD_REVIEW` series |
 | `CastSeriesBoardVote` | Insert/update one vote per user per poll |
 | `CancelSeriesBoardPoll` | `OPEN → CANCELLED` |
-| `CloseSeriesBoardPoll` | `OPEN → CLOSED`, compute result, update Series |
+| `CloseSeriesBoardPoll` | `OPEN → CLOSED`, compute result, update latest proposal and series |
 
 ### 11.3 Chapter commands
 
@@ -598,9 +703,10 @@ This keeps the schema compatible without requiring Cloudinary setup.
 | `GetGenres` | Populate genre multi-select |
 | `GetTags` | Populate tag multi-select |
 | `GetCurrentUser` | Load role/session |
-| `GetSeriesListForMangaka` | My series |
-| `GetSeriesEditorialQueue` | Editor queue |
-| `GetBoardPolls` | Board poll list |
+| `GetSeriesListForMangaka` | My series + latest proposal summary |
+| `GetSeriesDetail` | Series profile + genres/tags + latest proposal |
+| `GetProposalReviewQueue` | Editor queue |
+| `GetBoardPolls` | Board poll list + vote summary |
 | `GetChaptersForSeries` | Chapter CRUD |
 | `GetChapterReviewQueue` | Editor chapter queue |
 
@@ -632,16 +738,17 @@ GET    /api/wpf/series/{seriesId}
 POST   /api/wpf/series
 PUT    /api/wpf/series/{seriesId}
 DELETE /api/wpf/series/{seriesId}
-POST   /api/wpf/series/{seriesId}/submit
+POST   /api/wpf/series/{seriesId}/submit-proposal
 ```
 
-### Editor series review
+### Editor proposal review
 
 ```text
-GET  /api/wpf/editor/series-review-queue
-POST /api/wpf/editor/series/{seriesId}/return-to-draft
-POST /api/wpf/editor/series/{seriesId}/pass-to-board
-POST /api/wpf/editor/series/{seriesId}/cancel
+GET  /api/wpf/editor/proposal-review-queue
+GET  /api/wpf/editor/proposals/{proposalId}
+POST /api/wpf/editor/proposals/{proposalId}/request-revision
+POST /api/wpf/editor/proposals/{proposalId}/pass-to-board
+POST /api/wpf/editor/proposals/{proposalId}/cancel
 ```
 
 ### Board
@@ -649,6 +756,7 @@ POST /api/wpf/editor/series/{seriesId}/cancel
 ```text
 GET  /api/wpf/board/polls
 POST /api/wpf/board/series/{seriesId}/polls
+GET  /api/wpf/board/polls/{pollId}
 POST /api/wpf/board/polls/{pollId}/votes
 POST /api/wpf/board/polls/{pollId}/close
 POST /api/wpf/board/polls/{pollId}/cancel
@@ -682,10 +790,10 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 | `LoginViewModel` | Login or quick test-user selection |
 | `MainWindowViewModel` | Role-aware navigation, current page, logout |
 | `MangakaSeriesListViewModel` | Load current user's series, search/filter, create/edit/delete/submit |
-| `SeriesEditorViewModel` | Create/edit form, genres/tags, file selection, save/submit |
-| `EditorSeriesReviewViewModel` | Editorial review queue, return/pass/cancel actions |
+| `SeriesEditorViewModel` | Create/edit form, genres/tags, cover file selection, proposal file selection for submit |
+| `EditorProposalReviewViewModel` | Proposal review queue, request revision/pass/cancel actions |
 | `BoardPollListViewModel` | Poll list, vote counts, filters, open poll |
-| `BoardPollDetailViewModel` | Cast vote, close/cancel poll, vote summary |
+| `BoardPollDetailViewModel` | Cast vote, close/cancel poll, vote summary, latest proposal display |
 | `ChapterListViewModel` | Chapter CRUD, file selection, submit chapter |
 | `EditorChapterReviewViewModel` | Chapter review queue, approve/return/cancel |
 
@@ -715,7 +823,9 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 - Series table/cards.
 - Create button.
 - Edit button.
-- Submit button.
+- Submit Proposal button.
+- Latest proposal status/version badge.
+- Latest editor feedback display when returned.
 - Manage Chapters button for serialized series.
 - Status badges.
 
@@ -729,18 +839,21 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 - Language combo box.
 - Publication frequency combo box.
 - Cover file picker.
-- Proposal file picker.
-- Save button.
-- Submit button.
+- Proposal file picker for submit action.
+- Save Draft button.
+- Submit Proposal button.
 
-### 14.5 Editor Series Review View
+### 14.5 Editor Proposal Review View
 
-- Review queue table.
+- Proposal queue table.
 - Detail panel.
-- Genres/tags display.
+- Proposal version number.
+- Proposal title and synopsis snapshot.
+- Current series genres/tags display.
 - Cover/proposal file metadata.
 - Comments textbox.
-- Return to Draft button.
+- Optional markup file picker.
+- Request Changes button.
 - Pass to Board button.
 - Cancel button.
 
@@ -748,6 +861,8 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 
 - Poll list.
 - Poll detail.
+- Series information.
+- Latest proposal information.
 - Vote counts.
 - Vote choice radio buttons.
 - Reject reason textbox.
@@ -788,24 +903,36 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 | At least one genre required | WPF + backend |
 | Tags optional | WPF + backend |
 | Slug required/unique | Backend |
-| Proposal file required before submit | WPF + backend |
+| Cover file optional | WPF + backend |
 | Only `PROPOSAL_DRAFT` series can be edited | WPF + backend |
 | Only Mangaka contributor can edit/submit | Backend |
-| Only Editor can review | Backend |
-| Only Board Chief can open/close poll | Backend |
-| Only Board roles can vote | Backend |
 
-### 15.2 Board validation
+### 15.2 Proposal validation
 
 | Rule | Where |
 |---|---|
+| Proposal file required before submit | WPF + backend |
+| Proposal file must exist in `FileResource` | Backend |
+| Proposal file purpose should be `SERIES_PROPOSAL` | Backend |
+| New proposal version number must be previous max + 1 | Backend |
+| Only latest proposal should be reviewed | Backend |
+| Request revision requires comments or markup | DB + WPF |
+| Pass to board can allow optional comments | DB + WPF |
+
+### 15.3 Board validation
+
+| Rule | Where |
+|---|---|
+| Only Board Chief can open/close poll | Backend |
+| Only Board roles can vote | Backend |
 | Only one open poll per series/type | DB unique index |
 | `START_SERIALIZATION` requires publication frequency | DB + WPF |
 | Reject vote requires reason | DB + WPF |
 | One vote per user per poll | DB unique constraint |
 | Closed/cancelled poll cannot accept votes | Backend |
+| Poll remains tied to `series_id` | DB + backend |
 
-### 15.3 Chapter validation
+### 15.4 Chapter validation
 
 | Rule | Where |
 |---|---|
@@ -823,24 +950,27 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 ### Milestone 0 — Database and seed setup
 
 1. Run `WPFMangaManagementDB` schema script.
-2. Fix any schema syntax issues.
-3. Seed roles.
-4. Seed test users.
-5. Seed genres and tags.
-6. Create starter mock data.
-7. Verify `vw_SeriesBoardPollVoteSummary`.
+2. Ensure `SeriesProposal` is included.
+3. Ensure `SeriesEditorialReview` is removed.
+4. Ensure `Series` does not contain `proposal_file_id`.
+5. Verify `SeriesBoardPoll` keeps `series_id` only.
+6. Seed roles.
+7. Seed test users.
+8. Seed genres and tags.
+9. Create starter mock data.
+10. Verify `vw_SeriesBoardPollVoteSummary`.
 
 Deliverable:
 
 ```text
-Database runs cleanly and contains test users + lookup data.
+Database runs cleanly and contains test users + lookup data + final proposal workflow schema.
 ```
 
 ### Milestone 1 — Inspect existing MangaFlow backend
 
 1. Open current MangaFlow solution.
-2. List reusable commands/queries.
-3. Identify proposal-dependent code that cannot be reused directly.
+2. List reusable commands/queries around `Series` and `SeriesProposal`.
+3. Identify full-web assumptions that do not fit the WPF mini schema.
 4. Decide API reuse vs direct DB fallback.
 5. Create endpoint/command mapping table.
 
@@ -885,36 +1015,38 @@ WPF can select files and load lookup data.
 2. Create draft.
 3. Edit draft.
 4. Save genres/tags.
-5. Attach cover and proposal file.
-6. Submit to editorial review.
+5. Attach cover file.
+6. Select proposal file for submission.
+7. Submit proposal, creating `SeriesProposal` version 1.
 
 Deliverable:
 
 ```text
-Series can move PROPOSAL_DRAFT → UNDER_EDITORIAL_REVIEW.
+Series can move PROPOSAL_DRAFT → UNDER_EDITORIAL_REVIEW and create SeriesProposal.
 ```
 
-### Milestone 5 — Editor Series Review
+### Milestone 5 — Editor Proposal Review
 
-1. Editor queue.
-2. Detail panel.
-3. Return to draft with comments.
+1. Proposal review queue.
+2. Proposal detail panel.
+3. Request revision with comments/markup.
 4. Pass to board.
 5. Cancel.
 
 Deliverable:
 
 ```text
-Editor can move series back to PROPOSAL_DRAFT or forward to UNDER_BOARD_REVIEW.
+Editor can review SeriesProposal and move Series back to PROPOSAL_DRAFT or forward to UNDER_BOARD_REVIEW.
 ```
 
 ### Milestone 6 — Board voting
 
 1. Board poll list.
-2. Open poll.
-3. Cast vote.
-4. Show vote summary.
-5. Close poll and apply result.
+2. Open poll using `series_id`.
+3. Display latest proposal context for the selected series.
+4. Cast vote.
+5. Show vote summary.
+6. Close poll and apply result to latest proposal + series.
 
 Deliverable:
 
@@ -974,8 +1106,8 @@ Project is demo-ready.
 | Person | Ownership |
 |---|---|
 | Person A | Database setup, seed scripts, API/Application reuse inspection, backend command mapping |
-| Person B | Mangaka series CRUD, genre/tag selector, file picker, chapter CRUD |
-| Person C | Editor series review, editor chapter review, comments/markup flow |
+| Person B | Mangaka series CRUD, genre/tag selector, file picker, proposal submission, chapter CRUD |
+| Person C | Editor proposal review, editor chapter review, comments/markup flow |
 | Person D | Board voting, poll summary, close poll logic, UI styling and demo polish |
 
 ---
@@ -990,15 +1122,19 @@ Create a series draft.
 Select Action/Fantasy.
 Select tags.
 Attach cover file.
-Attach proposal file.
-Submit for editorial review.
+Select proposal file.
+Submit proposal.
+System creates SeriesProposal v1 UNDER_EDITORIAL_REVIEW.
+Series becomes UNDER_EDITORIAL_REVIEW.
 
 Login as TestEditor1.
-Open series review queue.
-Pass series to board.
+Open proposal review queue.
+Pass proposal to board.
+Proposal becomes UNDER_BOARD_REVIEW.
+Series becomes UNDER_BOARD_REVIEW.
 
 Login as TestBoardChief1.
-Open START_SERIALIZATION poll with WEEKLY frequency.
+Open START_SERIALIZATION poll for the series with WEEKLY frequency.
 
 Login as TestBoardMember1.
 Vote APPROVE.
@@ -1008,27 +1144,31 @@ Vote APPROVE.
 
 Login as TestBoardChief1.
 Close poll.
+Latest proposal becomes APPROVED.
 Series becomes SERIALIZED.
 ```
 
-### Scenario 2 — Editor returns series to draft
+### Scenario 2 — Editor returns proposal for revision
 
 ```text
-Mangaka submits series.
-Editor opens review queue.
-Editor enters comments and returns it.
+Mangaka submits proposal v1.
+Editor opens proposal review queue.
+Editor enters comments and requests changes.
+Proposal v1 becomes REVISION_REQUESTED.
 Series.status_code becomes PROPOSAL_DRAFT.
-Mangaka edits same Series.
-Mangaka resubmits.
+Mangaka edits the same Series.
+Mangaka submits again.
+System creates SeriesProposal v2 UNDER_EDITORIAL_REVIEW.
 ```
 
 ### Scenario 3 — Board rejects series
 
 ```text
-Editor passes series to board.
-Board Chief opens poll.
+Editor passes latest proposal to board.
+Board Chief opens poll for the series.
 Board members vote REJECT with reasons.
 Board Chief closes poll.
+Latest proposal becomes CANCELLED.
 Series becomes CANCELLED.
 ```
 
@@ -1059,8 +1199,10 @@ Editor approves.
 
 | Risk | Mitigation |
 |---|---|
-| Existing API is too tied to `SeriesProposal` | Create WPF mini endpoints instead of modifying full workflow |
+| Existing API uses full user/account schema | Create WPF-mini auth/session endpoints or use quick login |
+| Existing proposal workflow expects extra full-MangaFlow columns | Adapt handlers or create WPF-mini proposal commands |
 | File upload is too complex | Store local file path in Cloudinary fields for demo |
+| Board poll lacks `series_proposal_id` | Always resolve latest `UNDER_BOARD_REVIEW` proposal by `series_id` |
 | Board voting takes too long | Implement minimal poll open/vote/close only |
 | Genre/tag multi-select is annoying in WPF | Use checklist `ListBox` with selected items tracked in ViewModel |
 | Login/password is time-consuming | Add quick-login mode for test users |
@@ -1078,9 +1220,9 @@ Build in this order:
 3. Reference data lookup.
 4. FileResource local file handling.
 5. Series CRUD.
-6. Series submit.
-7. Editor series review.
-8. Board poll/vote/close.
+6. Proposal submission through `SeriesProposal`.
+7. Editor proposal review.
+8. Board poll/vote/close using `series_id`.
 9. Chapter CRUD.
 10. Chapter review.
 11. Polish and demo.
@@ -1091,21 +1233,23 @@ Do not start chapter UI before the series workflow reaches `SERIALIZED`.
 
 ## 21. Final Recommendation
 
-Start by inspecting the current MangaFlow API/Application layer, but do not force reuse where the full workflow depends on `SeriesProposal`.
+Start by inspecting the current MangaFlow API/Application layer because the restored `SeriesProposal` direction gives you more reuse opportunities.
 
 The best implementation strategy is:
 
 ```text
-Reuse architecture ideas and simple lookup/read models.
-Adapt or create mini-specific commands for workflows that changed.
-Keep WPF as a thin UI layer with ViewModels calling API clients.
-Use the selected WPFMangaManagementDB schema as the mini-project database.
+Keep WPF UI centered on Series CRUD.
+Use SeriesProposal internally for submitted versions and editor review.
+Keep BoardPoll tied to series_id only.
+Resolve the latest active proposal when board actions need proposal context.
+Reuse existing CQRS/API patterns where possible.
+Create WPF-mini commands only where the full workflow is too heavy.
 ```
 
 This gives the team a project that is:
 
 - close to MangaFlow,
-- realistic for a WPF subject,
-- easier than full web workflow,
-- strong enough to demonstrate real approval/voting flows,
+- faster to implement than the previous Series-only design,
+- still understandable as Series CRUD,
+- strong enough to demonstrate real editor review and board voting,
 - not overloaded with page-level production features.

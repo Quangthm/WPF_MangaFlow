@@ -85,7 +85,6 @@ CREATE TABLE manga.Series (
 	slug NVARCHAR(220) NOT NULL,
 	synopsis NVARCHAR(MAX) NOT NULL,
 	cover_file_id UNIQUEIDENTIFIER NULL,
-	proposal_file_id UNIQUEIDENTIFIER NULL,
 	status_code NVARCHAR(50) NOT NULL CONSTRAINT df_series_current_status_code DEFAULT(N'PROPOSAL_DRAFT'),
 	content_language_code NVARCHAR(10) NOT NULL CONSTRAINT df_series_content_language_code DEFAULT(N'ja'),
 	source_series_id UNIQUEIDENTIFIER NULL,
@@ -135,11 +134,9 @@ CREATE TABLE manga.Series (
 		),
 	CONSTRAINT uq_series_slug UNIQUE (slug),
 	CONSTRAINT fk_series_cover_file FOREIGN KEY (cover_file_id) REFERENCES manga.FileResource(file_resource_id),
-	CONSTRAINT fk_series_proposal_file FOREIGN KEY (proposal_file_id) REFERENCES manga.FileResource(file_resource_id),
 	CONSTRAINT fk_series_source_series FOREIGN KEY (source_series_id) REFERENCES manga.Series(series_id),
 	CONSTRAINT fk_series_updated_by FOREIGN KEY (updated_by_user_id) REFERENCES auth.Users(user_id)
 	);
-
 
 CREATE TABLE manga.Genre
 (
@@ -234,40 +231,62 @@ CREATE TABLE manga.SeriesContributor (
 		)
 	);
 
-CREATE TABLE manga.SeriesEditorialReview
-(
-    series_editorial_review_id UNIQUEIDENTIFIER NOT NULL
-        CONSTRAINT df_series_editorial_review_id DEFAULT NEWID()
-        CONSTRAINT pk_series_editorial_review PRIMARY KEY,
-
-    series_id UNIQUEIDENTIFIER NOT NULL,
-    reviewer_user_id UNIQUEIDENTIFIER NOT NULL,
-    decision_code NVARCHAR(50) NOT NULL,
-    comments NVARCHAR(MAX) NULL,
-    reviewed_at_utc DATETIME2(0) NOT NULL
-        CONSTRAINT df_series_editorial_review_reviewed_at DEFAULT SYSUTCDATETIME(),
-
-    CONSTRAINT ck_series_editorial_review_decision CHECK (
-        decision_code IN (
-            N'REVISION_REQUESTED',
-            N'PASSED_TO_BOARD',
-            N'CANCELLED'
-        )
-    ),
-
-    CONSTRAINT ck_series_editorial_review_feedback_required CHECK (
-        decision_code = N'PASSED_TO_BOARD'
-        OR NULLIF(LTRIM(RTRIM(comments)), N'') IS NOT NULL
-    ),
-
-    CONSTRAINT fk_series_editorial_review_series
-        FOREIGN KEY (series_id)
-        REFERENCES manga.Series(series_id),
-
-    CONSTRAINT fk_series_editorial_review_reviewer
-        FOREIGN KEY (reviewer_user_id)
-        REFERENCES auth.Users(user_id)
-);
+CREATE TABLE manga.SeriesProposal (
+	series_proposal_id UNIQUEIDENTIFIER NOT NULL CONSTRAINT df_series_proposal_id DEFAULT NEWID() CONSTRAINT pk_series_proposal PRIMARY KEY,
+	series_id UNIQUEIDENTIFIER NOT NULL,
+	proposal_version_no SMALLINT NOT NULL,
+	proposal_title NVARCHAR(200) NOT NULL,
+	synopsis_snapshot NVARCHAR(MAX) NOT NULL,
+	proposal_file_id UNIQUEIDENTIFIER NOT NULL,
+	status_code NVARCHAR(50) NOT NULL CONSTRAINT df_series_proposal_status_code DEFAULT(N'UNDER_EDITORIAL_REVIEW'),
+	submitted_by_user_id UNIQUEIDENTIFIER NOT NULL,
+	submitted_at_utc DATETIME2(0) NOT NULL CONSTRAINT df_series_proposal_submitted_at_utc DEFAULT SYSUTCDATETIME(),
+	withdrawn_at_utc DATETIME2(0) NULL,
+	reviewed_by_user_id UNIQUEIDENTIFIER NULL,
+	reviewed_at_utc DATETIME2(0) NULL,
+	comments NVARCHAR(MAX) NULL,
+	markup_file_id UNIQUEIDENTIFIER NULL,
+	CONSTRAINT ck_series_proposal_status_code CHECK (
+		status_code IN (
+			N'UNDER_EDITORIAL_REVIEW',
+			N'UNDER_BOARD_REVIEW',
+			N'REVISION_REQUESTED',
+			N'APPROVED',
+			N'CANCELLED',
+			N'WITHDRAWN'
+			)
+		),
+	CONSTRAINT ck_series_proposal_version_positive CHECK (proposal_version_no > 0),
+	CONSTRAINT ck_series_proposal_withdrawn_at_matches_status CHECK (
+		(
+			status_code = N'WITHDRAWN'
+			AND withdrawn_at_utc IS NOT NULL
+			)
+		OR (
+			status_code <> N'WITHDRAWN'
+			AND withdrawn_at_utc IS NULL
+			)
+		),
+	CONSTRAINT ck_series_proposal_review_pair CHECK (
+		(
+			reviewed_by_user_id IS NULL
+			AND reviewed_at_utc IS NULL
+			)
+		OR (
+			reviewed_by_user_id IS NOT NULL
+			AND reviewed_at_utc IS NOT NULL
+			)
+		),
+	CONSTRAINT fk_series_proposal_series FOREIGN KEY (series_id) REFERENCES manga.Series(series_id),
+	CONSTRAINT fk_series_proposal_file FOREIGN KEY (proposal_file_id) REFERENCES manga.FileResource(file_resource_id),
+	CONSTRAINT fk_series_proposal_submitted_by FOREIGN KEY (submitted_by_user_id) REFERENCES auth.Users(user_id),
+	CONSTRAINT fk_series_proposal_reviewed_by FOREIGN KEY (reviewed_by_user_id) REFERENCES auth.Users(user_id),
+	CONSTRAINT fk_series_proposal_markup_file FOREIGN KEY (markup_file_id) REFERENCES manga.FileResource(file_resource_id),
+	CONSTRAINT uq_series_proposal_series_version UNIQUE (
+		series_id,
+		proposal_version_no
+		)
+	);
 
 CREATE TABLE manga.Chapter (
 	chapter_id UNIQUEIDENTIFIER NOT NULL CONSTRAINT df_chapter_id DEFAULT NEWID() CONSTRAINT pk_chapter PRIMARY KEY,
