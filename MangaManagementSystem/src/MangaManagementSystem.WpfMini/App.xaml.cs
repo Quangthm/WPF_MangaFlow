@@ -15,7 +15,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         var builder = new ConfigurationBuilder()
-            .SetBasePath(System.IO.Directory.GetCurrentDirectory())
+            .SetBasePath(System.AppDomain.CurrentDomain.BaseDirectory)
             .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
         var configuration = builder.Build();
