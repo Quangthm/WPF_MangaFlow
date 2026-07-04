@@ -140,8 +140,6 @@ WHERE NOT EXISTS
 
 ----------------------------------------------------------------------
 -- Seed test users
--- New auth.Users table only has:
--- user_id, role_id, username, password_hash
 ----------------------------------------------------------------------
 
 ;WITH Numbers AS
@@ -206,12 +204,16 @@ INSERT INTO [auth].[Users]
 (
     [username],
     [password_hash],
-    [role_id]
+    [role_id],
+    [display_name],
+    [email]
 )
 SELECT
     gu.username,
     @PasswordHash,
-    r.role_id
+    r.role_id,
+    gu.username,   -- display_name same as username for test users
+    CONCAT(gu.username, N'@example.com')
 FROM GeneratedUsers gu
 INNER JOIN [auth].[Roles] r
     ON r.role_name = gu.role_name

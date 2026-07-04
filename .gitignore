@@ -427,3 +427,6 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+# Secret credentials (contains API keys, SMTP passwords, etc.)
+setup-secrets.ps1
