@@ -1,4 +1,4 @@
-USE MangaManagementDB;
+USE WPFMangaManagementDB;
 GO
 
 INSERT INTO auth.Roles (role_name)
@@ -204,16 +204,12 @@ INSERT INTO [auth].[Users]
 (
     [username],
     [password_hash],
-    [role_id],
-    [display_name],
-    [email]
+    [role_id]
 )
 SELECT
     gu.username,
     @PasswordHash,
-    r.role_id,
-    gu.username,   -- display_name same as username for test users
-    CONCAT(gu.username, N'@example.com')
+    r.role_id
 FROM GeneratedUsers gu
 INNER JOIN [auth].[Roles] r
     ON r.role_name = gu.role_name
