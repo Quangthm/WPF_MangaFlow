@@ -21,7 +21,7 @@ $root = $PSScriptRoot
 # Replace any PUT_*_HERE placeholder before running.
 # ---------------------------------------------------------------------------
 $secrets = @{
-    "ConnectionStrings:DefaultConnection" = "Server=localhost;Database=MangaManagementDB;User Id=sa;Password=12345;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=true"
+    "ConnectionStrings:DefaultConnection" = "Server=localhost;Database=WPFMangaManagementDB;User Id=sa;Password=12345;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=true"
     "Smtp:Username"                       = "thanhlong060206@gmail.com"
     "Smtp:Password"                       = "zrvx wltq wglp kjyu"
     "Smtp:FromEmail"                      = "thanhlong060206@gmail.com"
@@ -81,7 +81,7 @@ function Install-SecretsForProject {
 # ---------------------------------------------------------------------------
 # Project paths
 # ---------------------------------------------------------------------------
-$webProj  = Join-Path $root "src/MangaManagementSystem.Web/MangaManagementSystem.Web.csproj"
+$webProj  = $null  # Web project does not exist in this solution
 $apiProj  = Join-Path $root "src/MangaManagementSystem.API/MangaManagementSystem.API.csproj"
 
 # ---------------------------------------------------------------------------
@@ -91,11 +91,11 @@ Write-Host "MangaManagementSystem - User Secrets Setup" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 
 switch ($Project) {
-    "Web"  { Install-SecretsForProject -ProjectFile $webProj -Label "MangaManagementSystem.Web"  -SecretsTable $secrets }
+    "Web"  { Write-Host "WARNING: Web project does not exist in this solution. Skipping." -ForegroundColor Yellow }
     "API"  { Install-SecretsForProject -ProjectFile $apiProj -Label "MangaManagementSystem.API"  -SecretsTable $secrets }
     "Both" {
-        Install-SecretsForProject -ProjectFile $webProj -Label "MangaManagementSystem.Web"  -SecretsTable $secrets
         Install-SecretsForProject -ProjectFile $apiProj -Label "MangaManagementSystem.API"  -SecretsTable $secrets
+        Write-Host "Note: Web project does not exist in this solution; API only." -ForegroundColor Yellow
     }
 }
 
