@@ -32,6 +32,7 @@ namespace MangaManagementSystem.Infrastructure
             }
             services.AddMemoryCache();
             services.AddSingleton<IOtpCacheService, OtpCacheService>();
+            services.AddSingleton<ITokenBlacklistService, TokenBlacklistService>();
 
             services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
             services.AddScoped<IEmailService, EmailService>();

@@ -1,4 +1,5 @@
 using System.Text;
+using MangaManagementSystem.API.Middleware;
 using MangaManagementSystem.Application;
 using MangaManagementSystem.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,6 +19,16 @@ namespace MangaManagementSystem.API
             // business logic or SQL details.
             builder.Services.AddApplicationServices();
             builder.Services.AddInfrastructure(builder.Configuration);
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
 
             builder.Services.AddControllers();
             builder.Services.AddEndpointsApiExplorer();
@@ -60,9 +71,10 @@ namespace MangaManagementSystem.API
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            app.UseCors();
 
             app.UseAuthentication();
+            app.UseMiddleware<TokenBlacklistMiddleware>();
             app.UseAuthorization();
 
             app.MapControllers();

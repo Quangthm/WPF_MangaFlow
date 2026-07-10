@@ -1,6 +1,20 @@
 USE MangaManagementDB;
 GO
 
+-- =====================================================
+-- Drop existing test users first for clean re-seed
+-- =====================================================
+DELETE FROM [auth].[Users]
+WHERE username IN (
+    N'TestAdmin',
+    N'TestEditor1', N'TestEditor2', N'TestEditor3', N'TestEditor4', N'TestEditor5',
+    N'TestMangaka1', N'TestMangaka2', N'TestMangaka3', N'TestMangaka4', N'TestMangaka5',
+    N'TestBoardMember1', N'TestBoardMember2', N'TestBoardMember3', N'TestBoardMember4', N'TestBoardMember5',
+    N'TestBoardChief1', N'TestBoardChief2', N'TestBoardChief3', N'TestBoardChief4', N'TestBoardChief5',
+    N'TestAssistant1', N'TestAssistant2', N'TestAssistant3', N'TestAssistant4', N'TestAssistant5'
+);
+GO
+-- Re-insert roles if missing (idempotent)
 INSERT INTO auth.Roles (role_name)
 VALUES (N'Mangaka'),
 	(N'Assistant'),
@@ -105,8 +119,9 @@ GO
 USE MangaManagementDB;
 GO
 
+-- Password hash for "password" using BCrypt work factor 12
 DECLARE @PasswordHash NVARCHAR(255) =
-N'$2a$12$eBGlrcdEPsP8c6yDmKhnv.OojpFaPqmJ.DcYRswLWEFZAYTwGNDtq';
+N'$2a$12$83VooVspYNcK961JbZhbQOgk7fc0tj9R4Tmgw2Ff8XSxJedlHDlk2';
 
 ----------------------------------------------------------------------
 -- Seed roles if they do not exist
@@ -140,8 +155,8 @@ WHERE NOT EXISTS
 
 ----------------------------------------------------------------------
 -- Seed test users
--- New auth.Users table only has:
--- user_id, role_id, username, password_hash
+-- auth.Users now has: user_id, role_id, username, email, display_name,
+-- password_hash, avatar_file_id, portfolio_file_id, status_code, created_at_utc
 ----------------------------------------------------------------------
 
 ;WITH Numbers AS
@@ -157,61 +172,73 @@ WHERE NOT EXISTS
 ),
 GeneratedUsers AS
 (
-    -- 1 Admin only
     SELECT
         N'TestAdmin' AS username,
+        N'testadmin@mangaflow.com' AS email,
+        N'Test Admin' AS display_name,
         N'Admin' AS role_name
 
     UNION ALL
 
-    -- 5 Tantou Editors
     SELECT
         CONCAT(N'TestEditor', num),
+        CONCAT(N'testeditor', num, N'@mangaflow.com'),
+        CONCAT(N'Test Editor ', num),
         N'Tantou Editor'
     FROM Numbers
 
     UNION ALL
 
-    -- 5 Mangaka
     SELECT
         CONCAT(N'TestMangaka', num),
+        CONCAT(N'testmangaka', num, N'@mangaflow.com'),
+        CONCAT(N'Test Mangaka ', num),
         N'Mangaka'
     FROM Numbers
 
     UNION ALL
 
-    -- 5 Editorial Board Members
     SELECT
         CONCAT(N'TestBoardMember', num),
+        CONCAT(N'testboardmember', num, N'@mangaflow.com'),
+        CONCAT(N'Test Board Member ', num),
         N'Editorial Board Member'
     FROM Numbers
 
     UNION ALL
 
-    -- 5 Editorial Board Chiefs
     SELECT
         CONCAT(N'TestBoardChief', num),
+        CONCAT(N'testboardchief', num, N'@mangaflow.com'),
+        CONCAT(N'Test Board Chief ', num),
         N'Editorial Board Chief'
     FROM Numbers
 
     UNION ALL
 
-    -- 5 Assistants
     SELECT
         CONCAT(N'TestAssistant', num),
+        CONCAT(N'testassistant', num, N'@mangaflow.com'),
+        CONCAT(N'Test Assistant ', num),
         N'Assistant'
     FROM Numbers
 )
 INSERT INTO [auth].[Users]
 (
     [username],
+    [email],
+    [display_name],
     [password_hash],
-    [role_id]
+    [role_id],
+    [status_code]
 )
 SELECT
     gu.username,
+    gu.email,
+    gu.display_name,
     @PasswordHash,
-    r.role_id
+    r.role_id,
+    N'ACTIVE'
 FROM GeneratedUsers gu
 INNER JOIN [auth].[Roles] r
     ON r.role_name = gu.role_name

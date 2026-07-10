@@ -17,6 +17,7 @@ namespace MangaManagementSystem.Application
             services.AddScoped<ISeriesService, SeriesService>();
             services.AddScoped<IChapterService, ChapterService>();
             services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IChapterPageService, ChapterPageService>();
             services.AddScoped<IFileResourceService, FileResourceService>();

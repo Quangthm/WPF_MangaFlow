@@ -1,11 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using MangaManagementSystem.API.Contracts;
 using MangaManagementSystem.Application.DTOs.Auth;
 using MangaManagementSystem.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 
 namespace MangaManagementSystem.API.Controllers;
 
@@ -14,16 +12,19 @@ namespace MangaManagementSystem.API.Controllers;
 public sealed class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
-    private readonly IConfiguration _configuration;
+    private readonly IJwtService _jwtService;
+    private readonly ITokenBlacklistService _blacklistService;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         IAuthService authService,
-        IConfiguration configuration,
+        IJwtService jwtService,
+        ITokenBlacklistService blacklistService,
         ILogger<AuthController> logger)
     {
         _authService = authService;
-        _configuration = configuration;
+        _jwtService = jwtService;
+        _blacklistService = blacklistService;
         _logger = logger;
     }
 
@@ -46,8 +47,7 @@ public sealed class AuthController : ControllerBase
                 result.ErrorMessage ?? "Invalid credentials"));
         }
 
-        var expiresAtUtc = DateTime.UtcNow.AddDays(14);
-        var accessToken = GenerateJwtToken(result.User, result.RoleName, expiresAtUtc);
+        var (accessToken, expiresAtUtc) = _jwtService.GenerateToken(result.User, result.RoleName);
 
         var response = new LoginResponse(
             result.User,
@@ -58,44 +58,60 @@ public sealed class AuthController : ControllerBase
         return Ok(response);
     }
 
-    private string GenerateJwtToken(
-        UserDto user,
-        string roleName,
-        DateTime expiresAtUtc)
+    [HttpPost("logout")]
+    [Authorize]
+    public IActionResult Logout()
     {
-        var jwtKey = _configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException("Jwt:Key is missing.");
-
-        var jwtIssuer = _configuration["Jwt:Issuer"]
-            ?? throw new InvalidOperationException("Jwt:Issuer is missing.");
-
-        var jwtAudience = _configuration["Jwt:Audience"]
-            ?? throw new InvalidOperationException("Jwt:Audience is missing.");
-
-        var claims = new List<Claim>
+        var token = ExtractBearerToken();
+        if (token is null)
         {
-            new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-            new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, roleName),
-            new("user_id", user.UserId.ToString())
-        };
+            return BadRequest(new ApiErrorResponse("No token found in request."));
+        }
 
-        var signingKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtKey));
+        var expiry = ExtractTokenExpiry(token);
+        if (expiry.HasValue)
+        {
+            _blacklistService.BlacklistToken(token, expiry.Value);
+            _logger.LogInformation("Token blacklisted (expires {Expiry}).", expiry.Value);
+        }
 
-        var credentials = new SigningCredentials(
-            signingKey,
-            SecurityAlgorithms.HmacSha256);
+        return Ok(new ApiMessageResponse("Logged out successfully."));
+    }
 
-        var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
-            claims: claims,
-            expires: expiresAtUtc,
-            signingCredentials: credentials);
+    private string? ExtractBearerToken()
+    {
+        var authHeader = Request.Headers.Authorization.FirstOrDefault();
+        if (authHeader is null
+            || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+            || authHeader.Length <= "Bearer ".Length)
+        {
+            return null;
+        }
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return authHeader["Bearer ".Length..];
+    }
+
+    private static DateTime? ExtractTokenExpiry(string token)
+    {
+        try
+        {
+            var handler = new JwtSecurityTokenHandler();
+            var jwtToken = handler.ReadJwtToken(token);
+            var expValue = jwtToken.Claims
+                .FirstOrDefault(c => c.Type == "exp")?
+                .Value;
+
+            if (expValue is not null
+                && long.TryParse(expValue, out var expUnix))
+            {
+                return DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
+            }
+        }
+        catch
+        {
+            // Ignore malformed tokens
+        }
+
+        return null;
     }
 }

@@ -1,8 +1,8 @@
 
-CREATE DATABASE WPFMangaManagementDB;
+CREATE DATABASE MangaManagementDB;
 GO
 
-USE WPFMangaManagementDB;
+USE MangaManagementDB;
 GO
 
 SET NOCOUNT ON;
@@ -35,9 +35,18 @@ CREATE TABLE auth.Users (
 	user_id UNIQUEIDENTIFIER NOT NULL CONSTRAINT df_users_user_id DEFAULT NEWID() PRIMARY KEY,
 	role_id UNIQUEIDENTIFIER NOT NULL,
 	username NVARCHAR(50) NOT NULL,
+	email NVARCHAR(254) NOT NULL,
+	display_name NVARCHAR(100) NOT NULL,
 	password_hash NVARCHAR(255) NOT NULL,
+	avatar_file_id UNIQUEIDENTIFIER NULL,
+	portfolio_file_id UNIQUEIDENTIFIER NULL,
+	status_code NVARCHAR(30) NOT NULL CONSTRAINT df_users_status_code DEFAULT N'PENDING_APPROVAL',
+	created_at_utc DATETIME2(0) NOT NULL CONSTRAINT df_users_created_at_utc DEFAULT SYSUTCDATETIME(),
 	CONSTRAINT uq_users_username UNIQUE (username),
-	CONSTRAINT fk_userrole_role FOREIGN KEY (role_id) REFERENCES auth.Roles(role_id)
+	CONSTRAINT uq_users_email UNIQUE (email),
+	CONSTRAINT fk_userrole_role FOREIGN KEY (role_id) REFERENCES auth.Roles(role_id),
+	CONSTRAINT fk_users_avatar_file FOREIGN KEY (avatar_file_id) REFERENCES manga.FileResource(file_resource_id),
+	CONSTRAINT fk_users_portfolio_file FOREIGN KEY (portfolio_file_id) REFERENCES manga.FileResource(file_resource_id)
 	);
 	
 CREATE TABLE manga.FileResource (

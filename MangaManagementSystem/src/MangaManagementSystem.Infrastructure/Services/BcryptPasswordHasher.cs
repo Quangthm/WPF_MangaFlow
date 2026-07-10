@@ -1,9 +1,17 @@
 using MangaManagementSystem.Application.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace MangaManagementSystem.Infrastructure.Services
 {
     public class BcryptPasswordHasher : IPasswordHasher
     {
+        private readonly ILogger<BcryptPasswordHasher> _logger;
+
+        public BcryptPasswordHasher(ILogger<BcryptPasswordHasher> logger)
+        {
+            _logger = logger;
+        }
+
         public string HashPassword(string password)
             => BCrypt.Net.BCrypt.HashPassword(password, workFactor: 12);
 
@@ -11,6 +19,7 @@ namespace MangaManagementSystem.Infrastructure.Services
         {
             if (string.IsNullOrWhiteSpace(passwordHash))
             {
+                _logger.LogWarning("VerifyPassword called with null or empty hash.");
                 return false;
             }
 
@@ -18,9 +27,9 @@ namespace MangaManagementSystem.Infrastructure.Services
             {
                 return BCrypt.Net.BCrypt.Verify(password, passwordHash);
             }
-            catch
+            catch (Exception ex)
             {
-                // Seeded or legacy hashes may not be BCrypt format.
+                _logger.LogWarning(ex, "BCrypt verification failed for hash starting with '{Prefix}'.", passwordHash[..Math.Min(passwordHash.Length, 20)]);
                 return false;
             }
         }
