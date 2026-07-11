@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using MangaManagementSystem.WpfMini.Models;
 using MangaManagementSystem.WpfMini.Services;
 
@@ -9,7 +10,6 @@ namespace MangaManagementSystem.WpfMini.ViewModels;
 public partial class LoginViewModel : ObservableObject
 {
     private readonly AuthApiClient _authApi;
-    private readonly MainWindowViewModel _mainVm;
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -26,10 +26,11 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<TestUserDto> _testUsers = [];
 
-    public LoginViewModel(AuthApiClient authApi, MainWindowViewModel mainVm)
+    private MainWindowViewModel MainVm => App.ServiceProvider.GetRequiredService<MainWindowViewModel>();
+
+    public LoginViewModel(AuthApiClient authApi)
     {
         _authApi = authApi;
-        _mainVm = mainVm;
     }
 
     [RelayCommand]
@@ -70,7 +71,7 @@ public partial class LoginViewModel : ObservableObject
                 Email = response.Email
             };
 
-            _mainVm.SetSession(session);
+            MainVm.SetSession(session);
         }
         catch (Exception ex)
         {
@@ -112,7 +113,7 @@ public partial class LoginViewModel : ObservableObject
         if (user is null) return;
 
         Username = user.Username;
-        Password = "password";
+        Password = "Password123!";
         await LoginAsync();
     }
 }

@@ -86,7 +86,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 .AsNoTracking()
                 .Where(sc => sc.SeriesId == seriesId && sc.EndDate == null)
                 .Join(
-                    _context.Users.Where(u => u.StatusCode == "ACTIVE"),
+                    _context.Users,
                     sc => sc.UserId,
                     u => u.UserId,
                     (sc, u) => new { sc, u }
@@ -98,18 +98,13 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     (x, r) => new
                     {
                         x.u.UserId,
-                        x.u.DisplayName,
-                        x.u.Username,
-                        x.u.Email
+                        x.u.Username
                     }
                 )
-                .OrderBy(x => x.DisplayName)
-                .ThenBy(x => x.Username)
+                .OrderBy(x => x.Username)
                 .Select(x => new QuickSelectAssistantDto(
                     x.UserId,
-                    x.DisplayName,
-                    x.Username,
-                    x.Email
+                    x.Username
                 ))
                 .ToListAsync(cancellationToken);
 

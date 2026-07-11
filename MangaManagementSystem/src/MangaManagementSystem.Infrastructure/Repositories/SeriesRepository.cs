@@ -60,7 +60,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     sc.UserId == actorUserId &&
                     sc.EndDate == null &&
                     sc.User != null &&
-                    sc.User.StatusCode == "ACTIVE" &&
+                    true &&
                     sc.User.Role != null &&
                     sc.User.Role.RoleName == "Mangaka"))
                 .ToListAsync(cancellationToken);
@@ -354,7 +354,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 .AsNoTracking()
                 .Where(sc => sc.SeriesId == series.SeriesId && sc.User != null)
                 .Select(sc => new SeriesContributorReadModel(
-                    sc.User!.DisplayName,
+                    sc.User!.Username,
                     sc.User.Role != null ? sc.User.Role.RoleName : "",
                     sc.StartDate,
                     sc.EndDate))
@@ -405,7 +405,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                              sc.UserId == actorUserId &&
                              sc.EndDate == null &&
                              sc.User != null &&
-                             sc.User.StatusCode == "ACTIVE" &&
+                             true &&
                              sc.User.Role != null &&
                              sc.User.Role.RoleName == "Mangaka"),
                     cancellationToken);
@@ -433,7 +433,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     sc.UserId == actorUserId &&
                     sc.EndDate == null &&
                     sc.User != null &&
-                    sc.User.StatusCode == "ACTIVE" &&
+                    true &&
                     sc.User.Role != null &&
                     AllowedWorkspaceRoles.Contains(sc.User.Role.RoleName),
                     cancellationToken);

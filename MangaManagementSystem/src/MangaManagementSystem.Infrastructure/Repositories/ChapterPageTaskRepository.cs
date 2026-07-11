@@ -255,7 +255,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
 
         // --- Eligible assistants for task reassignment ---
 
-        public async Task<IReadOnlyList<(Guid UserId, string DisplayName, string? Username)>> GetEligibleAssistantsForTaskAsync(Guid taskId)
+        public async Task<IReadOnlyList<(Guid UserId, string Username)>> GetEligibleAssistantsForTaskAsync(Guid taskId)
         {
             // Derive seriesId and current assignee from task's region chain using explicit joins
             // to avoid CS8602 warnings from chained nullable navigation properties.
@@ -273,7 +273,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
             ).FirstOrDefaultAsync();
 
             if (taskContext == null || taskContext.SeriesId == Guid.Empty)
-                return Array.Empty<(Guid, string, string?)>();
+                return Array.Empty<(Guid, string)>();
 
             // Query active contributors for this series with Assistant role, exclude current assignee
             var assistants = await _context.ActiveSeriesContributors
@@ -285,12 +285,12 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 .Join(_context.Users,
                     asc => asc.UserId,
                     u => u.UserId,
-                    (asc, u) => new { u.UserId, u.DisplayName, u.Username })
-                .OrderBy(x => x.DisplayName)
+                    (asc, u) => new { u.UserId, u.Username })
+                .OrderBy(x => x.Username)
                 .ToListAsync();
 
             return assistants
-                .Select(a => (a.UserId, a.DisplayName ?? a.Username, (string?)a.Username))
+                .Select(a => (a.UserId, a.Username))
                 .ToList();
         }
     }

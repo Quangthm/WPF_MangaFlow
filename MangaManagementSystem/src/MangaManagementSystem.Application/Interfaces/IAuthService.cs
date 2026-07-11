@@ -15,8 +15,6 @@ namespace MangaManagementSystem.Application.Interfaces
 
         Task<AuthResultDto> LoginAsync(LoginDto request);
 
-        Task<AuthResultDto> GetUserByEmailAsync(string email);
-
         Task<GoogleSignupCallbackResult> ProcessGoogleSignupCallbackAsync(string email, string? googleDisplayName);
 
         Task<bool> SendEmailVerificationOtpAsync(string email);

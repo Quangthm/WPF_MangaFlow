@@ -70,8 +70,7 @@ namespace MangaManagementSystem.Application.DTOs.Manga
     /// </summary>
     public sealed record EligibleAssistantDto(
         Guid UserId,
-        string DisplayName,
-        string? Username
+        string Username
     );
 
     /// <summary>
