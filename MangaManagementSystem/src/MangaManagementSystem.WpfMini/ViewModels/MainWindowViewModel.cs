@@ -27,7 +27,6 @@ public partial class MainWindowViewModel : ObservableObject
     {
         _api = api;
         _authApi = authApi;
-        CurrentViewModel = App.ServiceProvider.GetRequiredService<LoginViewModel>();
     }
 
     public void SetSession(CurrentUserSession session)

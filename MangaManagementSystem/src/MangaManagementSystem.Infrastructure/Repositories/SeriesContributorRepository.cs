@@ -47,18 +47,16 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 join r in _context.Roles.AsNoTracking() on u.RoleId equals r.RoleId
                 join s in _context.Series.AsNoTracking() on sc.SeriesId equals s.SeriesId
                 where sc.SeriesId == seriesId
-                orderby (sc.EndDate == null && u.StatusCode == "ACTIVE") descending, u.DisplayName
+                orderby sc.EndDate == null descending, u.Username
                 select new SeriesContributorListItemDto(
                     sc.SeriesId,
                     s.Title,
                     sc.UserId,
-                    u.DisplayName,
                     u.Username,
-                    u.Email,
                     r.RoleName,
                     sc.StartDate,
                     sc.EndDate,
-                    sc.EndDate == null && u.StatusCode == "ACTIVE");
+                    sc.EndDate == null);
 
             return await query.ToListAsync(cancellationToken);
         }
@@ -78,38 +76,30 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 from u in _context.Users.AsNoTracking()
                 join r in _context.Roles.AsNoTracking() on u.RoleId equals r.RoleId
                 where r.RoleName == "Assistant"
-                      && u.StatusCode == "ACTIVE"
                       && !activeContributorUserIds.Contains(u.UserId)
                 select new
                 {
                     u.UserId,
-                    u.DisplayName,
-                    u.Username,
-                    u.Email
+                    u.Username
                 };
 
             if (!string.IsNullOrWhiteSpace(search))
             {
                 var term = search.Trim();
                 query = query.Where(x =>
-                    x.DisplayName.Contains(term)
-                    || (x.Username != null && x.Username.Contains(term))
-                    || (x.Email != null && x.Email.Contains(term)));
+                    x.Username != null && x.Username.Contains(term));
             }
 
             return await query
-                .OrderBy(x => x.DisplayName)
-                .ThenBy(x => x.Username)
+                .OrderBy(x => x.Username)
                 .Take(50)
                 .Select(x => new EligibleAssistantContributorDto(
                     x.UserId,
-                    x.DisplayName,
-                    x.Username,
-                    x.Email))
+                    x.Username))
                 .ToListAsync(cancellationToken);
         }
 
-        public async Task<(bool Exists, string? DisplayName, string? Username, string? Email, string? RoleName, string? StatusCode, bool IsActiveContributor)> GetContributorTargetSnapshotAsync(
+        public async Task<(bool Exists, string? Username, string? RoleName, bool IsActiveContributor)> GetContributorTargetSnapshotAsync(
             Guid seriesId,
             Guid userId,
             CancellationToken cancellationToken = default)
@@ -120,16 +110,13 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 where u.UserId == userId
                 select new
                 {
-                    u.DisplayName,
                     u.Username,
-                    u.Email,
-                    RoleName = r.RoleName,
-                    u.StatusCode
+                    RoleName = r.RoleName
                 }).FirstOrDefaultAsync(cancellationToken);
 
             if (userRow == null)
             {
-                return (Exists: false, null, null, null, null, null, IsActiveContributor: false);
+                return (Exists: false, null, null, IsActiveContributor: false);
             }
 
             bool isActiveContributor = await _context.SeriesContributors
@@ -141,11 +128,8 @@ namespace MangaManagementSystem.Infrastructure.Repositories
 
             return (
                 Exists: true,
-                DisplayName: userRow.DisplayName,
                 Username: userRow.Username,
-                Email: userRow.Email,
                 RoleName: userRow.RoleName,
-                StatusCode: userRow.StatusCode,
                 IsActiveContributor: isActiveContributor);
         }
 

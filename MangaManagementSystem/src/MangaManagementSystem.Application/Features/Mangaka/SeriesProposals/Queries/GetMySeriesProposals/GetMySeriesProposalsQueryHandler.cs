@@ -56,8 +56,8 @@ namespace MangaManagementSystem.Application.Features.Mangaka.SeriesProposals.Que
                 WithdrawnAtUtc: proposal.WithdrawnAtUtc,
                 ReviewedAtUtc: proposal.ReviewedAtUtc,
                 Comments: proposal.Comments,
-                SubmittedByDisplayName: proposal.SubmittedByUser?.DisplayName ?? string.Empty,
-                ReviewedByDisplayName: proposal.ReviewedByUser?.DisplayName,
+                SubmittedByDisplayName: proposal.SubmittedByUser?.Username ?? string.Empty,
+                ReviewedByDisplayName: proposal.ReviewedByUser?.Username,
                 ProposalFile: new ProposalFileRefDto(
                     FileResourceId: proposal.ProposalFile!.FileResourceId,
                     OriginalFileName: proposal.ProposalFile.OriginalFileName,

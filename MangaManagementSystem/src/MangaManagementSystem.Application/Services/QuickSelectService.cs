@@ -248,10 +248,8 @@ namespace MangaManagementSystem.Application.Services
             if (!isContributor)
             {
                 var user = await _unitOfWork.Users.GetByIdAsync(actorUserId);
-                var userStatus = user?.StatusCode;
-                var roleId = user?.RoleId;
 
-                if (user == null || userStatus != "ACTIVE" || roleId == Guid.Empty)
+                if (user == null || user.RoleId == Guid.Empty)
                     throw new InvalidOperationException(
                         "You no longer have permission to assign tasks for this series.");
 

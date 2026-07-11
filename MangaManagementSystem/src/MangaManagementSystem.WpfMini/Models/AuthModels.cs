@@ -14,7 +14,7 @@ public class LoginRequest
 public class LoginResponse
 {
     [JsonPropertyName("userId")]
-    public int UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
 
     [JsonPropertyName("username")]
     public string Username { get; set; } = string.Empty;
@@ -35,7 +35,7 @@ public class LoginResponse
 public class TestUserDto
 {
     [JsonPropertyName("userId")]
-    public int UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
 
     [JsonPropertyName("username")]
     public string Username { get; set; } = string.Empty;

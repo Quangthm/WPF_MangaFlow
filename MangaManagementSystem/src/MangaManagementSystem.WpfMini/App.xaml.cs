@@ -37,15 +37,19 @@ public partial class App : Application
         services.AddSingleton<ApiClientBase>();
 
         services.AddSingleton<AuthApiClient>();
+        services.AddSingleton<EditorApiClient>();
 
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<LoginViewModel>();
         services.AddTransient<ShellViewModel>();
+        services.AddTransient<EditorProposalReviewViewModel>();
 
         ServiceProvider = services.BuildServiceProvider();
 
         var mainWindow = new MainWindow();
-        mainWindow.DataContext = ServiceProvider.GetRequiredService<MainWindowViewModel>();
+        var mainVm = ServiceProvider.GetRequiredService<MainWindowViewModel>();
+        mainVm.CurrentViewModel = ServiceProvider.GetRequiredService<LoginViewModel>();
+        mainWindow.DataContext = mainVm;
         mainWindow.Show();
     }
 }

@@ -20,22 +20,19 @@ namespace MangaManagementSystem.Application.Services
         private readonly IEmailService _emailService;
         private readonly IOtpCacheService _otpCacheService;
         private readonly ILogger<AuthService> _logger;
-        private readonly IFileStorageService _fileStorageService;
 
         public AuthService(
             IUnitOfWork unitOfWork,
             IPasswordHasher passwordHasher,
             IEmailService emailService,
             IOtpCacheService otpCacheService,
-            ILogger<AuthService> logger,
-            IFileStorageService fileStorageService)
+            ILogger<AuthService> logger)
         {
             _unitOfWork = unitOfWork;
             _passwordHasher = passwordHasher;
             _emailService = emailService;
             _otpCacheService = otpCacheService;
             _logger = logger;
-            _fileStorageService = fileStorageService;
         }
 
         public async Task<bool> SendRegistrationOtpAsync(RegisterDto request)
@@ -43,7 +40,9 @@ namespace MangaManagementSystem.Application.Services
             var normalizedEmail = NormalizeEmail(request.Email);
             var trimmedUsername = request.Username.Trim();
 
-            await EnsureEmailAndUsernameAvailableAsync(normalizedEmail, trimmedUsername);
+            // Only check username availability against DB
+            if (await _unitOfWork.Users.GetByUsernameAsync(trimmedUsername) is not null)
+                throw new InvalidOperationException("This username is already taken.");
 
             var otp = GenerateOtp();
             var cachedRequest = request with
@@ -59,8 +58,7 @@ namespace MangaManagementSystem.Application.Services
         }
 
         public async Task<UserDto> CompleteRegistrationWithOtpAsync(
-            string email,
-            string otp,
+            string email, string otp,
             byte[]? portfolioFileBytes = null,
             string? portfolioFileName = null,
             string? portfolioContentType = null)
@@ -69,91 +67,31 @@ namespace MangaManagementSystem.Application.Services
             var pendingRegistration = _otpCacheService.TryValidateAndRemoveRegistrationOtp(normalizedEmail, otp);
 
             if (pendingRegistration is null)
-            {
                 throw new InvalidOperationException("The verification code is invalid or has expired.");
-            }
-
-            // When the user uploads portfolio at step 2 (multipart complete), override the
-            // cached registration's portfolio fields so the existing upload/linking logic applies.
-            if (portfolioFileBytes is not null)
-            {
-                pendingRegistration = pendingRegistration with
-                {
-                    PortfolioFileBytes = portfolioFileBytes,
-                    PortfolioFileName = portfolioFileName,
-                    PortfolioContentType = portfolioContentType
-                };
-            }
 
             await EnsureEmailAndUsernameAvailableAsync(normalizedEmail, pendingRegistration.Username);
 
             var roleName = pendingRegistration.RoleName;
             var passwordHash = _passwordHasher.HashPassword(pendingRegistration.Password);
 
-            string? portfolioPublicId = null;
-            string? portfolioSecureUrl = null;
-            string? portfolioUploadContentType = null;
-            long? portfolioFileSize = null;
-            string? portfolioOriginalFileName = null;
-            string? portfolioSha256 = null;
+            var roles = await _unitOfWork.Roles.GetAllAsync();
+            var role = roles.FirstOrDefault(r => r.RoleName == roleName)
+                ?? throw new InvalidOperationException($"Role '{roleName}' not found.");
 
-            if (pendingRegistration.PortfolioFileBytes is { Length: > 0 })
+            var newUser = new User
             {
-                var uploadResult = await _fileStorageService.UploadFileAsync(
-                    pendingRegistration.PortfolioFileBytes,
-                    pendingRegistration.PortfolioFileName ?? "portfolio",
-                    pendingRegistration.PortfolioContentType ?? "application/octet-stream",
-                    "REGISTRATION_PORTFOLIO",
-                    null);
+                UserId = Guid.NewGuid(),
+                RoleId = role.RoleId,
+                Username = pendingRegistration.Username,
+                PasswordHash = passwordHash
+            };
 
-                portfolioPublicId = uploadResult.PublicId;
-                portfolioSecureUrl = uploadResult.SecureUrl;
-                portfolioUploadContentType = uploadResult.ContentType;
-                portfolioFileSize = uploadResult.FileSizeBytes;
-                portfolioOriginalFileName = uploadResult.OriginalFileName;
-                portfolioSha256 = uploadResult.Sha256Hash;
-            }
+            await _unitOfWork.Users.AddAsync(newUser);
+            await _unitOfWork.SaveChangesAsync();
 
-            Guid newUserId;
-
-            try
-            {
-                (newUserId, _) = await _unitOfWork.Users.CreateUserWithOptionalPortfolioAsync(
-                    roleName,
-                    pendingRegistration.Username,
-                    normalizedEmail,
-                    passwordHash,
-                    pendingRegistration.DisplayName,
-                    null,
-                    portfolioOriginalFileName,
-                    portfolioPublicId,
-                    portfolioSecureUrl,
-                    portfolioUploadContentType,
-                    portfolioFileSize,
-                    portfolioSha256,
-                    null);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Failed to complete registration for email {Email}. Attempting uploaded portfolio cleanup if needed.",
-                    normalizedEmail);
-
-                if (!string.IsNullOrEmpty(portfolioPublicId))
-                {
-                    await TryDeleteUploadedPortfolioAsync(portfolioPublicId, portfolioUploadContentType);
-                }
-
-                throw;
-            }
-
-            // Use GetByEmailAsync instead of generic GetByIdAsync because UserRepository.GetByEmailAsync includes Role.
-            var created = await _unitOfWork.Users.GetByEmailAsync(normalizedEmail);
-            if (created is null || created.UserId != newUserId)
-            {
+            var created = await _unitOfWork.Users.GetByIdAsync(newUser.UserId);
+            if (created is null)
                 throw new InvalidOperationException("Failed to load created user.");
-            }
 
             return created.ToDto();
         }
@@ -165,172 +103,78 @@ namespace MangaManagementSystem.Application.Services
 
             if (user is null)
             {
-                _logger.LogWarning(
-                    "Login failed: User not found for identifier {LoginIdentifier}",
-                    loginIdentifier);
-
+                _logger.LogWarning("Login failed: User not found for identifier {LoginIdentifier}", loginIdentifier);
                 return new AuthResultDto(false, null, null, "Invalid credentials");
             }
 
             if (!_passwordHasher.VerifyPassword(request.Password, user.PasswordHash))
             {
-                _logger.LogWarning(
-                    "Login failed: Invalid password for user {UserId} ({Username})",
-                    user.UserId,
-                    user.Username);
-
+                _logger.LogWarning("Login failed: Invalid password for user {UserId} ({Username})", user.UserId, user.Username);
                 return new AuthResultDto(false, null, null, "Invalid credentials");
-            }
-
-            var statusFailure = ValidatePasswordLoginStatus(user);
-            if (statusFailure is not null)
-            {
-                _logger.LogWarning(
-                    "Login failed: User {UserId} ({Username}) has status {StatusCode}",
-                    user.UserId,
-                    user.Username,
-                    user.StatusCode);
-
-                return statusFailure;
             }
 
             var authResult = BuildSuccessfulAuthResult(user, "Login failed");
 
             if (authResult.Succeeded)
             {
-                _logger.LogInformation(
-                    "Login succeeded for user {UserId} ({Username}) with role {RoleName}",
-                    user.UserId,
-                    user.Username,
-                    authResult.RoleName);
-            }
-
-            return authResult;
-        }
-
-        public async Task<AuthResultDto> GetUserByEmailAsync(string email)
-        {
-            if (string.IsNullOrWhiteSpace(email))
-            {
-                _logger.LogWarning("Google login failed: Email claim was empty");
-                return new AuthResultDto(false, null, null, "Email is required.");
-            }
-
-            var normalizedEmail = NormalizeEmail(email);
-            var user = await _unitOfWork.Users.GetByEmailAsync(normalizedEmail);
-
-            if (user is null)
-            {
-                _logger.LogWarning(
-                    "Google login failed: No user found for email {Email}",
-                    normalizedEmail);
-
-                return new AuthResultDto(false, null, null, "User not found.");
-            }
-
-            if (!string.Equals(user.StatusCode, "ACTIVE", StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogWarning(
-                    "Google login failed: User {UserId} ({Email}) is not ACTIVE. Current status: {StatusCode}",
-                    user.UserId,
-                    normalizedEmail,
-                    user.StatusCode);
-
-                return new AuthResultDto(false, null, null, "User is not active.");
-            }
-
-            var authResult = BuildSuccessfulAuthResult(user, "Google login failed");
-
-            if (authResult.Succeeded)
-            {
-                _logger.LogInformation(
-                    "Google login lookup succeeded for user {UserId} ({Email}) with role {RoleName}",
-                    user.UserId,
-                    normalizedEmail,
-                    authResult.RoleName);
+                _logger.LogInformation("Login succeeded for user {UserId} ({Username}) with role {RoleName}",
+                    user.UserId, user.Username, authResult.RoleName);
             }
 
             return authResult;
         }
 
         public async Task<GoogleSignupCallbackResult> ProcessGoogleSignupCallbackAsync(
-            string email,
-            string? googleDisplayName)
+            string email, string? googleDisplayName)
         {
             var normalizedEmail = NormalizeEmail(email);
-            var existingUser = await _unitOfWork.Users.GetByEmailAsync(normalizedEmail);
+            var username = await GenerateUniqueUsernameAsync(googleDisplayName, normalizedEmail);
 
-            if (existingUser is null)
+            // Check if user already exists by username
+            var existingUser = await _unitOfWork.Users.GetByUsernameAsync(username);
+            if (existingUser is not null)
             {
-                var username = await GenerateUniqueUsernameAsync(googleDisplayName, normalizedEmail);
-                var passwordHash = _passwordHasher.HashPassword(Guid.NewGuid().ToString("N") + "!Aa1");
-
-                var newUserId = await _unitOfWork.Users.CreateUserViaProcAsync(
-                    DefaultRegistrationRoleName,
-                    username,
-                    normalizedEmail,
-                    passwordHash,
-                    googleDisplayName,
-                    null,
-                    null,
-                    null);
-
-                await SendEmailVerificationOtpAsync(normalizedEmail);
-
-                _logger.LogInformation(
-                    "Google sign-up created pending user {UserId} ({Email}) with username {Username}",
-                    newUserId,
-                    normalizedEmail,
-                    username);
-
+                var userDto = existingUser.ToDto();
                 return new GoogleSignupCallbackResult(
-                    GoogleSignupFlow.NewUserVerifyOtp,
-                    normalizedEmail);
+                    GoogleSignupFlow.ActiveUserLogin,
+                    normalizedEmail,
+                    userDto,
+                    userDto.RoleName);
             }
 
-            if (string.Equals(existingUser.StatusCode, "PENDING_APPROVAL", StringComparison.OrdinalIgnoreCase))
+            var passwordHash = _passwordHasher.HashPassword(Guid.NewGuid().ToString("N") + "!Aa1");
+
+            var roles = await _unitOfWork.Roles.GetAllAsync();
+            var role = roles.FirstOrDefault(r => r.RoleName == DefaultRegistrationRoleName)
+                ?? throw new InvalidOperationException($"Role '{DefaultRegistrationRoleName}' not found.");
+
+            var newUser = new User
             {
-                await SendEmailVerificationOtpAsync(normalizedEmail);
+                UserId = Guid.NewGuid(),
+                RoleId = role.RoleId,
+                Username = username,
+                PasswordHash = passwordHash
+            };
 
-                _logger.LogInformation(
-                    "Google sign-up resumed OTP verification for pending user {UserId} ({Email})",
-                    existingUser.UserId,
-                    normalizedEmail);
+            await _unitOfWork.Users.AddAsync(newUser);
+            await _unitOfWork.SaveChangesAsync();
 
-                return new GoogleSignupCallbackResult(
-                    GoogleSignupFlow.PendingApprovalVerifyOtp,
-                    normalizedEmail);
-            }
+            await SendEmailVerificationOtpAsync(normalizedEmail);
 
-            if (string.Equals(existingUser.StatusCode, "ACTIVE", StringComparison.OrdinalIgnoreCase))
-            {
-                return BuildActiveGoogleSignupLoginResult(existingUser, normalizedEmail);
-            }
-
-            _logger.LogWarning(
-                "Google sign-up rejected for user {UserId} ({Email}) with status {StatusCode}",
-                existingUser.UserId,
-                normalizedEmail,
-                existingUser.StatusCode);
+            _logger.LogInformation("Google sign-up created pending user {UserId} ({Email}) with username {Username}",
+                newUser.UserId, normalizedEmail, username);
 
             return new GoogleSignupCallbackResult(
-                GoogleSignupFlow.Rejected,
-                normalizedEmail,
-                ErrorMessage: "This account cannot be used for sign-up. Contact support.");
+                GoogleSignupFlow.NewUserVerifyOtp,
+                normalizedEmail);
         }
 
         public async Task<bool> SendEmailVerificationOtpAsync(string email)
         {
             var normalizedEmail = NormalizeEmail(email);
-
-            await GetPendingApprovalUserByNormalizedEmailAsync(
-                normalizedEmail,
-                "Email verification is only available for pending accounts.");
-
             var otp = GenerateOtp();
             _otpCacheService.StoreEmailVerificationOtp(normalizedEmail, otp);
             await _emailService.SendOtpEmailAsync(normalizedEmail, otp);
-
             return true;
         }
 
@@ -339,64 +183,16 @@ namespace MangaManagementSystem.Application.Services
             var normalizedEmail = NormalizeEmail(email);
 
             if (!_otpCacheService.TryValidateAndRemoveEmailVerificationOtp(normalizedEmail, otp))
-            {
                 throw new InvalidOperationException("The verification code is invalid or has expired.");
-            }
 
-            var user = await GetPendingApprovalUserByNormalizedEmailAsync(
-                normalizedEmail,
-                "This account is not awaiting email verification.");
-
-            _logger.LogInformation(
-                "Email verified via OTP for pending user {UserId} ({Email}). Awaiting admin approval.",
-                user.UserId,
-                normalizedEmail);
-
+            _logger.LogInformation("Email verified via OTP for {Email}.", normalizedEmail);
             return true;
         }
 
         private async Task EnsureEmailAndUsernameAvailableAsync(string normalizedEmail, string username)
         {
-            if (await _unitOfWork.Users.GetByEmailAsync(normalizedEmail) is not null)
-            {
-                throw new InvalidOperationException("An account with this email already exists.");
-            }
-
             if (await _unitOfWork.Users.GetByUsernameAsync(username.Trim()) is not null)
-            {
                 throw new InvalidOperationException("This username is already taken.");
-            }
-        }
-
-        private AuthResultDto? ValidatePasswordLoginStatus(User user)
-        {
-            return user.StatusCode.ToUpperInvariant() switch
-            {
-                "ACTIVE" => null,
-                "PENDING_APPROVAL" => new AuthResultDto(
-                    false,
-                    null,
-                    null,
-                    "Account pending admin approval."),
-
-                "REJECTED" => new AuthResultDto(
-                    false,
-                    null,
-                    null,
-                    "Account registration was rejected."),
-
-                "DISABLED" => new AuthResultDto(
-                    false,
-                    null,
-                    null,
-                    "Account is disabled."),
-
-                _ => new AuthResultDto(
-                    false,
-                    null,
-                    null,
-                    "Account configuration is invalid. Contact support.")
-            };
         }
 
         private AuthResultDto BuildSuccessfulAuthResult(User user, string failureContext)
@@ -427,71 +223,13 @@ namespace MangaManagementSystem.Application.Services
             User user,
             string normalizedEmail)
         {
-            try
-            {
-                var userDto = user.ToDto();
+            var userDto = user.ToDto();
 
-                return new GoogleSignupCallbackResult(
-                    GoogleSignupFlow.ActiveUserLogin,
-                    normalizedEmail,
-                    userDto,
-                    userDto.RoleName);
-            }
-            catch (InvalidOperationException ex)
-            {
-                _logger.LogWarning(
-                    ex,
-                    "Google sign-up failed: Role was not loaded for user {UserId} ({Email})",
-                    user.UserId,
-                    normalizedEmail);
-
-                return new GoogleSignupCallbackResult(
-                    GoogleSignupFlow.Rejected,
-                    normalizedEmail,
-                    ErrorMessage: "Account configuration is invalid. Contact support.");
-            }
-        }
-
-        private async Task<User> GetPendingApprovalUserByNormalizedEmailAsync(
-            string normalizedEmail,
-            string invalidStatusMessage)
-        {
-            var user = await _unitOfWork.Users.GetByEmailAsync(normalizedEmail);
-
-            if (user is null)
-            {
-                throw new InvalidOperationException("No account found for this email.");
-            }
-
-            if (!string.Equals(user.StatusCode, "PENDING_APPROVAL", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(invalidStatusMessage);
-            }
-
-            return user;
-        }
-
-        private async Task TryDeleteUploadedPortfolioAsync(
-            string portfolioPublicId,
-            string? portfolioContentType)
-        {
-            try
-            {
-                var resourceType =
-                    !string.IsNullOrEmpty(portfolioContentType)
-                    && portfolioContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
-                        ? "image"
-                        : "raw";
-
-                await _fileStorageService.DeleteFileAsync(portfolioPublicId, resourceType);
-            }
-            catch (Exception cleanupEx)
-            {
-                _logger.LogError(
-                    cleanupEx,
-                    "Failed to delete Cloudinary asset {PublicId} after DB failure.",
-                    portfolioPublicId);
-            }
+            return new GoogleSignupCallbackResult(
+                GoogleSignupFlow.ActiveUserLogin,
+                normalizedEmail,
+                userDto,
+                userDto.RoleName);
         }
 
         private async Task<string> GenerateUniqueUsernameAsync(string? googleDisplayName, string email)

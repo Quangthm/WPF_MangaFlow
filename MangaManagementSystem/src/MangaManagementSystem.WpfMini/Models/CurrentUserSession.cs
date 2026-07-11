@@ -2,7 +2,7 @@ namespace MangaManagementSystem.WpfMini.Models;
 
 public class CurrentUserSession
 {
-    public int UserId { get; set; }
+    public string UserId { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string RoleCode { get; set; } = string.Empty;

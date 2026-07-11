@@ -11,9 +11,7 @@ namespace MangaManagementSystem.Application.DTOs.Manga
         Guid SeriesId,
         string SeriesTitle,
         Guid UserId,
-        string DisplayName,
-        string? Username,
-        string? Email,
+        string Username,
         string RoleName,
         DateTime StartDate,
         DateTime? EndDate,
@@ -25,9 +23,7 @@ namespace MangaManagementSystem.Application.DTOs.Manga
     /// </summary>
     public sealed record EligibleAssistantContributorDto(
         Guid UserId,
-        string DisplayName,
-        string? Username,
-        string? Email);
+        string Username);
 
     /// <summary>
     /// Request body for adding an Assistant contributor to a series.

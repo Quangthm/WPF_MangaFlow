@@ -21,7 +21,6 @@ namespace MangaManagementSystem.Infrastructure.Repositories
     public sealed class MangakaChapterRepository : IMangakaChapterRepository
     {
         private const string MangakaRoleName = "Mangaka";
-        private const string ActiveUserStatus = "ACTIVE";
         private const string DraftStatus = "DRAFT";
         private const string UnderReviewStatus = "UNDER_REVIEW";
         private const string RevisionRequestedStatus = "REVISION_REQUESTED";
@@ -241,7 +240,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     sc.UserId == actorUserId &&
                     sc.EndDate == null &&
                     sc.User != null &&
-                    sc.User.StatusCode == ActiveUserStatus &&
+                    true &&
                     sc.User.Role != null &&
                     sc.User.Role.RoleName == MangakaRoleName));
         }
@@ -276,7 +275,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     sc.UserId == actorUserId &&
                     sc.EndDate == null &&
                     sc.User != null &&
-                    sc.User.StatusCode == ActiveUserStatus &&
+                    true &&
                     sc.User.Role != null &&
                     sc.User.Role.RoleName == MangakaRoleName,
                     cancellationToken);
@@ -318,7 +317,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
             {
                 latestReviewDto = new ChapterEditorialReviewSummaryDto(
                     latestReview.ChapterEditorialReviewId,
-                    latestReview.ReviewerUser?.DisplayName ?? string.Empty,
+                    latestReview.ReviewerUser?.Username ?? string.Empty,
                     latestReview.DecisionCode,
                     latestReview.Feedback,
                     latestReview.MarkupFileId,

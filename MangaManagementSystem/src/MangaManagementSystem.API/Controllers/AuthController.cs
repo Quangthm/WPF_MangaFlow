@@ -77,7 +77,6 @@ public sealed class AuthController : ControllerBase
             new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
             new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
             new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Role, roleName),
             new("user_id", user.UserId.ToString())
         };

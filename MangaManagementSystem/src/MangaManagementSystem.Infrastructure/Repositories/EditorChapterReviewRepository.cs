@@ -169,7 +169,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     a.AnnotationText ?? string.Empty,
                     a.IssueTypeCode,
                     a.CreatedAtUtc,
-                    a.AnnotatedByUser != null ? a.AnnotatedByUser.DisplayName : null,
+                    a.AnnotatedByUser != null ? a.AnnotatedByUser.Username : null,
                     a.ResolvedAtUtc != null))
                 .ToListAsync(ct);
 
@@ -185,7 +185,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 chapter.StatusCode,
                 pageCount,
                 chapter.CreatedAtUtc,
-                chapter.CreatedByUser?.DisplayName,
+                chapter.CreatedByUser?.Username,
                 pageDetails,
                 openAnnotations);
         }
