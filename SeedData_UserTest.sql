@@ -1,4 +1,4 @@
-USE MangaManagementDB;
+USE WPFMangaManagementDB;
 GO
 
 INSERT INTO auth.Roles (role_name)
@@ -140,8 +140,6 @@ WHERE NOT EXISTS
 
 ----------------------------------------------------------------------
 -- Seed test users
--- New auth.Users table only has:
--- user_id, role_id, username, password_hash
 ----------------------------------------------------------------------
 
 ;WITH Numbers AS

@@ -1,11 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
-using MangaManagementSystem.API.Contracts;
 using MangaManagementSystem.Application.DTOs.Auth;
 using MangaManagementSystem.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 
 namespace MangaManagementSystem.API.Controllers;
 
@@ -13,110 +8,107 @@ namespace MangaManagementSystem.API.Controllers;
 [Route("api/wpf/auth")]
 public sealed class WpfAuthController : ControllerBase
 {
+    private static readonly Dictionary<string, string> RoleNameToCode = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Tantou Editor"] = "EDITOR",
+        ["Editorial Board Chief"] = "BOARD_CHIEF",
+        ["Editorial Board Member"] = "BOARD_MEMBER",
+        ["Mangaka"] = "MANGAKA",
+        ["Assistant"] = "ASSISTANT",
+        ["Admin"] = "ADMIN",
+    };
+
     private readonly IAuthService _authService;
-    private readonly IUserService _userService;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<WpfAuthController> _logger;
 
     public WpfAuthController(
         IAuthService authService,
-        IUserService userService,
-        IConfiguration configuration,
         ILogger<WpfAuthController> logger)
     {
         _authService = authService;
-        _userService = userService;
-        _configuration = configuration;
         _logger = logger;
     }
 
+    /// <summary>
+    /// WPF mini client login.
+    /// POST /api/wpf/auth/login
+    /// Body: { "username": "...", "password": "..." }
+    /// </summary>
     [HttpPost("login")]
     public async Task<IActionResult> LoginAsync(
         [FromBody] WpfLoginRequest request,
         CancellationToken cancellationToken)
     {
-        if (!ModelState.IsValid)
+        try
         {
-            return ValidationProblem(ModelState);
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest(new { error = "Username and password are required." });
+            }
+
+            _logger.LogInformation("WPF login attempt for user: {Username}", request.Username);
+
+            var result = await _authService.LoginAsync(
+                new LoginDto(request.Username, request.Password));
+
+            if (!result.Succeeded || result.User is null || string.IsNullOrWhiteSpace(result.RoleName))
+            {
+                _logger.LogWarning("WPF login failed for user {Username}: {Error}", request.Username, result.ErrorMessage);
+                return Unauthorized(new { error = result.ErrorMessage ?? "Invalid credentials" });
+            }
+
+            var roleCode = MapRoleNameToCode(result.RoleName);
+
+            _logger.LogInformation("WPF login succeeded for user {Username} with role {Role} -> code {RoleCode}", request.Username, result.RoleName, roleCode);
+
+            return Ok(new
+            {
+                userId = result.User.UserId.ToString(),
+                username = result.User.Username,
+                roleCode
+            });
         }
-
-        var result = await _authService.LoginAsync(
-            new LoginDto(request.Username, request.Password));
-
-        if (!result.Succeeded || result.User is null || string.IsNullOrWhiteSpace(result.RoleName))
+        catch (Exception ex)
         {
-            return Unauthorized(new ApiErrorResponse(
-                result.ErrorMessage ?? "Invalid credentials"));
+            _logger.LogError(ex, "WPF login failed with unexpected error for user {Username}", request.Username);
+            return StatusCode(500, new { error = "An unexpected error occurred. Please try again later." });
         }
-
-        var expiresAtUtc = DateTime.UtcNow.AddDays(14);
-        var accessToken = GenerateJwtToken(result.User, result.RoleName, expiresAtUtc);
-
-        var response = new WpfLoginResponse(
-            UserId: result.User.UserId.ToString(),
-            Username: result.User.Username,
-            DisplayName: result.User.DisplayName,
-            RoleCode: result.RoleName.ToUpperInvariant(),
-            Token: accessToken,
-            Email: result.User.Email
-        );
-
-        return Ok(response);
     }
 
-    [HttpGet("test-users")]
-    public async Task<IActionResult> GetTestUsersAsync(CancellationToken cancellationToken)
+    private static string MapRoleNameToCode(string roleName)
     {
-        var activeUsers = await _userService.GetUsersByStatusAsync("ACTIVE");
+        if (RoleNameToCode.TryGetValue(roleName, out var code))
+            return code;
 
-        var testUsers = activeUsers.Select(u => new WpfTestUserDto(
-            UserId: u.UserId.ToString(),
-            Username: u.Username,
-            DisplayName: u.DisplayName,
-            RoleCode: (u.RoleName ?? "").ToUpperInvariant()
-        )).ToList();
+        // fallback: uppercase with underscores
+        return roleName
+            .Replace(" ", "_")
+            .ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Trả về danh sách test users cho WPF mini client quick-login.
+    /// GET /api/wpf/auth/test-users
+    /// </summary>
+    [HttpGet("test-users")]
+    public IActionResult GetTestUsers()
+    {
+        var testUsers = new[]
+        {
+            new { username = "TestEditor1", displayName = "TestEditor1 (Tantou Editor)", roleCode = "EDITOR" },
+            new { username = "TestBoardChief1", displayName = "TestBoardChief1 (Board Chief)", roleCode = "BOARD_CHIEF" },
+            new { username = "TestBoardMember1", displayName = "TestBoardMember1 (Board Member)", roleCode = "BOARD_MEMBER" },
+            new { username = "TestMangaka1", displayName = "TestMangaka1 (Mangaka)", roleCode = "MANGAKA" },
+            new { username = "TestAssistant1", displayName = "TestAssistant1 (Assistant)", roleCode = "ASSISTANT" },
+            new { username = "TestAdmin", displayName = "TestAdmin (Admin)", roleCode = "ADMIN" },
+        };
 
         return Ok(testUsers);
     }
 
-    private string GenerateJwtToken(
-        UserDto user,
-        string roleName,
-        DateTime expiresAtUtc)
-    {
-        var jwtKey = _configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException("Jwt:Key is missing.");
-
-        var jwtIssuer = _configuration["Jwt:Issuer"]
-            ?? throw new InvalidOperationException("Jwt:Issuer is missing.");
-
-        var jwtAudience = _configuration["Jwt:Audience"]
-            ?? throw new InvalidOperationException("Jwt:Audience is missing.");
-
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-            new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, roleName),
-            new("user_id", user.UserId.ToString())
-        };
-
-        var signingKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtKey));
-
-        var credentials = new SigningCredentials(
-            signingKey,
-            SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
-            claims: claims,
-            expires: expiresAtUtc,
-            signingCredentials: credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
 }
+
+/// <summary>
+/// Request model cho WPF mini client login.
+/// </summary>
+public sealed record WpfLoginRequest(string Username, string Password);

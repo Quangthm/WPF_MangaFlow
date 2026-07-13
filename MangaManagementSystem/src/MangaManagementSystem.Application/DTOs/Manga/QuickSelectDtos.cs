@@ -20,9 +20,7 @@ namespace MangaManagementSystem.Application.DTOs.Manga
 
     public sealed record QuickSelectAssistantDto(
         Guid UserId,
-        string DisplayName,
-        string? Username,
-        string? Email
+        string Username
     );
 
     public sealed record QuickSelectTaskAssignmentRequest(

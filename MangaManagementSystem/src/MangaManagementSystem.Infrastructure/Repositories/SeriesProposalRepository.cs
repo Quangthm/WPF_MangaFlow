@@ -102,7 +102,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     sc.UserId == actorUserId &&
                     sc.EndDate == null &&
                     sc.User != null &&
-                    sc.User.StatusCode == "ACTIVE" &&
+                    true &&
                     sc.User.Role != null &&
                     sc.User.Role.RoleName == "Mangaka"))
                 .OrderByDescending(sp => sp.SubmittedAtUtc)
@@ -119,7 +119,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     sc.UserId == userId &&
                     sc.EndDate == null &&
                     sc.User != null &&
-                    sc.User.StatusCode == "ACTIVE" &&
+                    true &&
                     sc.User.Role != null &&
                     sc.User.Role.RoleName == "Tantou Editor", ct);
         }

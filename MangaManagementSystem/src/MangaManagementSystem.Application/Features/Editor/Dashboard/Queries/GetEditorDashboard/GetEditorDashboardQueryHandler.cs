@@ -51,7 +51,7 @@ namespace MangaManagementSystem.Application.Features.Editor.Dashboard.Queries.Ge
                     sp.Series?.Title ?? string.Empty,
                     sp.ProposalTitle,
                     sp.ProposalVersionNo,
-                    sp.SubmittedByUser?.DisplayName ?? string.Empty,
+                    sp.SubmittedByUser?.Username ?? string.Empty,
                     sp.SubmittedAtUtc,
                     sp.StatusCode))
                 .ToList();

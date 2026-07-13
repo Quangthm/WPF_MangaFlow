@@ -29,7 +29,7 @@ namespace MangaManagementSystem.Application.Interfaces
             string? search,
             CancellationToken cancellationToken = default);
 
-        Task<(bool Exists, string? DisplayName, string? Username, string? Email, string? RoleName, string? StatusCode, bool IsActiveContributor)> GetContributorTargetSnapshotAsync(
+        Task<(bool Exists, string? Username, string? RoleName, bool IsActiveContributor)> GetContributorTargetSnapshotAsync(
             Guid seriesId,
             Guid userId,
             CancellationToken cancellationToken = default);

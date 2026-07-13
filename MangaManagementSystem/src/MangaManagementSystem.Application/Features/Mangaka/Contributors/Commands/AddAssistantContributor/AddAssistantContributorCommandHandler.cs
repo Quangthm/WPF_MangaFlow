@@ -52,11 +52,6 @@ namespace MangaManagementSystem.Application.Features.Mangaka.Contributors.Comman
                 throw new InvalidOperationException("The selected assistant user does not exist.");
             }
 
-            if (!string.Equals(target.StatusCode, "ACTIVE", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("The selected assistant user is not currently active.");
-            }
-
             if (!string.Equals(target.RoleName, "Assistant", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Only users with the Assistant role can be added as assistant contributors.");

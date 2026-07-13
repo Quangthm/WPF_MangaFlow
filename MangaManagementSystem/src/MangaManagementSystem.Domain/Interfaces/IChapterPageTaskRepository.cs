@@ -45,6 +45,6 @@ namespace MangaManagementSystem.Domain.Interfaces
             string updatedTaskDescription);
 
         // Eligible assistants for task reassignment (active contributors of same series, Assistant role)
-        Task<IReadOnlyList<(Guid UserId, string DisplayName, string? Username)>> GetEligibleAssistantsForTaskAsync(Guid taskId);
+        Task<IReadOnlyList<(Guid UserId, string Username)>> GetEligibleAssistantsForTaskAsync(Guid taskId);
     }
 }

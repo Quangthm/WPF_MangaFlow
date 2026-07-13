@@ -1,4 +1,4 @@
-﻿using MangaManagementSystem.Application.DTOs.Manga;
+using MangaManagementSystem.Application.DTOs.Manga;
 using MangaManagementSystem.Application.Interfaces;
 using MangaManagementSystem.Domain.Entities;
 using MangaManagementSystem.Domain.Interfaces;
@@ -113,7 +113,7 @@ namespace MangaManagementSystem.Application.Services
                 var seriesId = t.PageRegions
                     .Select(r => r.ChapterPageVersion?.ChapterPage?.Chapter?.SeriesId)
                     .FirstOrDefault(id => id.HasValue);
-                var assignedName = t.AssignedToUser?.DisplayName;
+                var assignedName = t.AssignedToUser?.Username;
                 var dto = MapToDto(t);
                 return dto with { SeriesId = seriesId, AssignedToDisplayName = assignedName };
             }).ToList();
@@ -184,7 +184,7 @@ namespace MangaManagementSystem.Application.Services
                     r.OriginalText,
                     r.CreatedByUserId,
                     r.UpdatedByUserId)).ToList(),
-                AssignedToDisplayName: t.AssignedToUser?.DisplayName,
+                AssignedToDisplayName: t.AssignedToUser?.Username,
                 AssignedUsername: t.AssignedToUser?.Username,
                 CreatedAtUtc: t.CreatedAtUtc
             );
@@ -257,7 +257,7 @@ namespace MangaManagementSystem.Application.Services
             if (task.CreatedByUserId != actorUserId)
                 throw new InvalidOperationException("You are not authorized to reassign this task.");
 
-            // Status check — only ASSIGNED and UNDER_REVIEW are reassignable
+            // Status check � only ASSIGNED and UNDER_REVIEW are reassignable
             if (task.StatusCode is "COMPLETED" or "CANCELLED")
                 throw new InvalidOperationException("Completed or cancelled tasks cannot be reassigned.");
 
@@ -273,7 +273,7 @@ namespace MangaManagementSystem.Application.Services
                 ? task.TaskDescription
                 : request.UpdatedTaskDescription.Trim();
 
-            // Call SP — final guards for contributor membership, locking, and audit happen in SQL
+            // Call SP � final guards for contributor membership, locking, and audit happen in SQL
             var newTaskId = await _unitOfWork.ChapterPageTasks.AssignToDifferentUserAsync(
                 actorUserId,
                 taskId,
@@ -295,7 +295,7 @@ namespace MangaManagementSystem.Application.Services
 
             var rawAssistants = await _unitOfWork.ChapterPageTasks.GetEligibleAssistantsForTaskAsync(taskId);
             return rawAssistants
-                .Select(a => new EligibleAssistantDto(a.UserId, a.DisplayName, a.Username))
+                .Select(a => new EligibleAssistantDto(a.UserId, a.Username))
                 .ToList();
         }
 
@@ -334,7 +334,7 @@ namespace MangaManagementSystem.Application.Services
                     r.CreatedByUserId,
                     r.UpdatedByUserId)).ToList(),
                 SeriesId: series?.SeriesId ?? null,
-                AssignedToDisplayName: t.AssignedToUser?.DisplayName,
+                AssignedToDisplayName: t.AssignedToUser?.Username,
                 SeriesTitle: series?.Title,
                 ChapterNumberLabel: chapter?.ChapterNumberLabel,
                 ChapterTitle: chapter?.ChapterTitle,
@@ -344,7 +344,7 @@ namespace MangaManagementSystem.Application.Services
                 CompensationAmount: t.CompensationAmount,
                 AssignedUsername: t.AssignedToUser?.Username,
                 CompletedOutputUrl: completedFile?.CloudinarySecureUrl,
-                CreatedByDisplayName: t.CreatedByUser?.DisplayName,
+                CreatedByDisplayName: t.CreatedByUser?.Username,
                 CreatedAtUtc: t.CreatedAtUtc,
                 UpdatedAtUtc: t.UpdatedAtUtc,
                 SeriesSlug: series?.Slug,
@@ -389,7 +389,7 @@ namespace MangaManagementSystem.Application.Services
                     r.CreatedByUserId,
                     r.UpdatedByUserId)).ToList(),
                 SeriesId: series?.SeriesId ?? null,
-                AssignedToDisplayName: t.AssignedToUser?.DisplayName,
+                AssignedToDisplayName: t.AssignedToUser?.Username,
                 SeriesTitle: series?.Title,
                 ChapterNumberLabel: chapter?.ChapterNumberLabel,
                 ChapterTitle: chapter?.ChapterTitle,
