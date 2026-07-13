@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,13 +66,14 @@ public partial class LoginViewModel : ObservableObject
             {
                 UserId = response.UserId,
                 Username = response.Username,
-                DisplayName = response.DisplayName,
-                RoleCode = response.RoleCode,
-                Token = response.Token,
-                Email = response.Email
+                RoleCode = response.RoleCode
             };
 
             MainVm.SetSession(session);
+        }
+        catch (HttpRequestException ex)
+        {
+            ErrorMessage = ex.Message;
         }
         catch (Exception ex)
         {

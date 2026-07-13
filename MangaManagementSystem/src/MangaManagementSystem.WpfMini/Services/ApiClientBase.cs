@@ -1,4 +1,3 @@
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Net.Http;
@@ -14,15 +13,18 @@ public class ApiClientBase
         _httpClient = httpClient;
     }
 
-    public void SetAuthToken(string token)
+    public void SetActorUserId(string userId)
     {
-        _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", token);
+        if (!Guid.TryParse(userId, out _))
+            return;
+
+        _httpClient.DefaultRequestHeaders.Remove("X-Actor-User-Id");
+        _httpClient.DefaultRequestHeaders.Add("X-Actor-User-Id", userId);
     }
 
-    public void ClearAuthToken()
+    public void ClearActorUserId()
     {
-        _httpClient.DefaultRequestHeaders.Authorization = null;
+        _httpClient.DefaultRequestHeaders.Remove("X-Actor-User-Id");
     }
 
     public async Task<T?> GetAsync<T>(string url)

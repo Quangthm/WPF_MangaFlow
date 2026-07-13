@@ -31,17 +31,17 @@ public partial class MainWindowViewModel : ObservableObject
 
     public void SetSession(CurrentUserSession session)
     {
-        _api.SetAuthToken(session.Token);
+        _api.SetActorUserId(session.UserId);
         CurrentSession = session;
         IsLoggedIn = true;
-        Title = $"Manga Management - {session.DisplayName} ({session.RoleCode})";
+        Title = $"Manga Management - {session.Username} ({session.RoleCode})";
         CurrentViewModel = App.ServiceProvider.GetRequiredService<ShellViewModel>();
     }
 
     [RelayCommand]
     private void Logout()
     {
-        _api.ClearAuthToken();
+        _api.ClearActorUserId();
         CurrentSession = null;
         IsLoggedIn = false;
         Title = "Manga Management System";
