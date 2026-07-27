@@ -1,9 +1,9 @@
 # WPF Manga Management — Revised API + EF Core Implementation Plan
 
-> **Target:** WPF desktop app for manga series submission, editorial review, board voting, chapter CRUD, and chapter review.  
+> **Target:** WPF desktop app for manga series submission, editorial review, board voting, chapter CRUD, simple chapter page/version upload-preview, and chapter review.  
 > **Database:** `WPFMangaManagementDB` or a WPF mini database branch compatible with the selected MangaFlow schema.  
 > **Direction:** Reuse the current MangaFlow Clean Architecture/CQRS/API shape where possible.  
-> **Major changes from teammate plan:** Use API calls instead of direct DB/Dapper, do real file upload instead of dummy `FileResource`, and implement WPF-mini write workflows with EF Core rather than stored procedures.
+> **Major changes from teammate plan:** Use API calls instead of direct DB/Dapper, do real file upload instead of dummy `FileResource`, allow WPF to reuse Application DTOs/contracts for API request/response models, keep simple `ChapterPage`/`ChapterPageVersion` upload-preview in scope, and implement WPF-mini write workflows with EF Core rather than stored procedures.
 
 ---
 
@@ -85,13 +85,10 @@ WPF should select files locally, then send them to the API as multipart upload:
 |---|---|
 | Series cover | `SERIES_COVER` |
 | Proposal document | `SERIES_PROPOSAL` |
-| Chapter package / chapter file | Use existing compatible purpose or add `CHAPTER_PACKAGE` if schema allows |
+| Chapter page image/version | `CHAPTER_PAGE_VERSION` |
 | Editor markup file | `EDITORIAL_ATTACHMENT` |
 
-If the current `FileResource` purpose check does not include `CHAPTER_PACKAGE`, either:
-
-1. Use `EDITORIAL_ATTACHMENT` for chapter review markup and keep `chapter_file_id` limited to an existing allowed purpose; or
-2. Add `CHAPTER_PACKAGE` to the WPF mini schema and API validation.
+For chapter content, WPF does not upload a single chapter package file. It uploads page images. Each uploaded image creates or updates `FileResource` metadata and is linked through `ChapterPageVersion.file_resource_id`. The UI may show only a simple image preview and page/version navigation.
 
 ### 2.4 Use EF Core instead of stored procedures for WPF-mini writes
 
@@ -110,6 +107,45 @@ Create/update Chapter and review rows
 ```
 
 Keep database constraints as the final safety layer, but business validation should live in Application handlers.
+
+### 2.5 WPF may reuse Application DTOs/contracts
+
+To reduce duplicated model classes, the WPF project may reference `MangaManagementSystem.Application` DTOs/contracts for API request and response shapes.
+
+Allowed:
+
+```text
+WPF ViewModel
+→ WPF API client
+→ GetAsync<ApplicationDto>()
+→ API JSON response
+```
+
+Not allowed:
+
+```text
+WPF ViewModel
+→ Application handler/service/repository/DbContext directly
+```
+
+WPF-specific models are still allowed for UI-only state such as selected rows, checkbox wrappers, upload preview state, navigation state, search/filter text, and `CurrentUserSession`.
+
+### 2.6 Simple Chapter Page/Version scope
+
+`ChapterPage` and `ChapterPageVersion` are in WPF scope only for simple upload and preview:
+
+```text
+Upload New Page
+→ create ChapterPage
+→ create first ChapterPageVersion
+→ display selected image
+
+Upload New Page Version
+→ create newer ChapterPageVersion for selected ChapterPage
+→ make/display latest version
+```
+
+No page regions, annotations, assistant tasks, AI segmentation, OCR, translation tools, or canvas editing are included.
 
 ---
 
@@ -180,9 +216,13 @@ MangaManagementSystem.WpfMini/
 │   ├── SeriesModels.cs
 │   ├── SeriesProposalModels.cs
 │   ├── ChapterModels.cs
+│   ├── ChapterPageModels.cs
 │   ├── BoardModels.cs
 │   ├── FileModels.cs
 │   └── LookupModels.cs
+│
+│   # Note: These can be replaced by Application DTOs/contracts where practical.
+│   # Keep WPF-only models for UI state/wrappers only.
 │
 ├── Services/
 │   ├── ApiClientBase.cs
@@ -192,6 +232,7 @@ MangaManagementSystem.WpfMini/
 │   ├── EditorProposalApiClient.cs
 │   ├── BoardApiClient.cs
 │   ├── ChapterApiClient.cs
+│   ├── ChapterPageApiClient.cs
 │   ├── EditorChapterApiClient.cs
 │   ├── FileUploadApiClient.cs
 │   ├── FilePickerService.cs
@@ -206,6 +247,7 @@ MangaManagementSystem.WpfMini/
 │   ├── BoardPollListViewModel.cs
 │   ├── BoardPollDetailViewModel.cs
 │   ├── ChapterListViewModel.cs
+│   ├── ChapterEditorViewModel.cs
 │   └── EditorChapterReviewViewModel.cs
 │
 ├── Views/
@@ -217,6 +259,7 @@ MangaManagementSystem.WpfMini/
 │   ├── BoardPollListView.xaml
 │   ├── BoardPollDetailView.xaml
 │   ├── ChapterListView.xaml
+│   ├── ChapterEditorView.xaml
 │   └── EditorChapterReviewView.xaml
 │
 ├── Converters/
@@ -253,6 +296,7 @@ API/
         ├── WpfEditorProposalController.cs
         ├── WpfBoardController.cs
         ├── WpfChapterController.cs
+        ├── WpfChapterPageController.cs
         ├── WpfEditorChapterController.cs
         └── WpfFilesController.cs
 ```
@@ -368,18 +412,31 @@ DELETE /api/wpf/chapters/{chapterId}
 POST   /api/wpf/chapters/{chapterId}/submit
 ```
 
-Chapter creation/update may include:
+Chapter creation/update should focus on chapter metadata:
 
 ```json
 {
   "chapterNumberLabel": "1",
   "chapterTitle": "Beginning",
-  "chapterFileId": "optional-guid",
   "plannedReleaseDate": "2026-07-01"
 }
 ```
 
-### 5.8 Editor Chapter Review
+Chapter image files are uploaded separately as pages/page versions.
+
+### 5.8 Chapter Pages and Versions
+
+```text
+GET  /api/wpf/chapters/{chapterId}/pages
+POST /api/wpf/chapters/{chapterId}/pages
+POST /api/wpf/chapter-pages/{chapterPageId}/versions
+```
+
+`POST /api/wpf/chapters/{chapterId}/pages` uploads a new page image and creates both a logical `ChapterPage` and first `ChapterPageVersion`.
+
+`POST /api/wpf/chapter-pages/{chapterPageId}/versions` uploads a new image version for the selected logical page.
+
+### 5.9 Editor Chapter Review
 
 ```text
 GET  /api/wpf/editor/chapters/queue
@@ -426,10 +483,18 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 | `CreateWpfChapterDraftCommand` | Insert `Chapter` under `SERIALIZED` series |
 | `UpdateWpfChapterDraftCommand` | Update if `DRAFT` or `REVISION_REQUESTED` |
 | `DeleteWpfChapterDraftCommand` | Delete/cancel if `DRAFT` |
-| `SubmitWpfChapterForReviewCommand` | Set chapter `UNDER_REVIEW`; require chapter file if project scope requires |
+| `SubmitWpfChapterForReviewCommand` | Set chapter `UNDER_REVIEW`; require at least one chapter page with a current page version |
 | `ApproveWpfChapterCommand` | Insert `ChapterEditorialReview(APPROVED)`, set chapter `APPROVED` |
 | `RequestWpfChapterRevisionCommand` | Insert review with comments/markup, set chapter `REVISION_REQUESTED` |
 | `CancelWpfChapterReviewCommand` | Insert review with comments/markup, set chapter `CANCELLED` |
+
+### 6.5 Chapter page/version commands
+
+| Command | EF Core behavior |
+|---|---|
+| `GetWpfChapterPagesQuery` | Return logical pages and their versions for a chapter, ordered by page number and version number |
+| `UploadWpfChapterPageCommand` | Upload image file, create `FileResource`, create `ChapterPage`, create first `ChapterPageVersion`, mark/display it as current |
+| `UploadWpfChapterPageVersionCommand` | Upload image file, create `FileResource`, create next `ChapterPageVersion` for selected page, unset previous current version if the schema supports current-version tracking |
 
 ---
 
@@ -484,6 +549,39 @@ SaveChanges
 Commit
 ```
 
+### Upload new chapter page
+
+```text
+Receive multipart image file
+Validate actor is Mangaka contributor
+Validate chapter status is DRAFT or REVISION_REQUESTED
+Upload file / create FileResource with purpose CHAPTER_PAGE_VERSION
+Begin transaction
+Compute next page number for chapter
+Create ChapterPage
+Create ChapterPageVersion version_no = 1
+SaveChanges
+Commit
+Return created page + version DTO
+```
+
+### Upload new chapter page version
+
+```text
+Receive multipart image file
+Validate actor is Mangaka contributor
+Validate chapter status is DRAFT or REVISION_REQUESTED
+Validate selected ChapterPage belongs to chapter
+Upload file / create FileResource with purpose CHAPTER_PAGE_VERSION
+Begin transaction
+Compute next version number for selected page
+Create ChapterPageVersion
+Unset previous current version if supported
+SaveChanges
+Commit
+Return updated page/version DTO
+```
+
 ### Chapter review
 
 ```text
@@ -516,10 +614,10 @@ For cover file:
 Allowed: .jpg, .jpeg, .png, .webp
 ```
 
-For chapter file:
+For chapter page image/version:
 
 ```text
-Allowed: .zip, .pdf, .jpg, .jpeg, .png, .webp
+Allowed: .jpg, .jpeg, .png, .webp
 ```
 
 For editor markup:
@@ -575,7 +673,8 @@ public async Task<FileResourceDto> UploadAsync(string filePath, string purposeCo
 | `EditorProposalReviewViewModel` | Proposal queue, detail, claim, revision/pass/cancel |
 | `BoardPollListViewModel` | Series ready for board, poll list, open poll |
 | `BoardPollDetailViewModel` | Vote, vote summary, close/cancel poll |
-| `ChapterListViewModel` | Chapters for serialized series, upload chapter file, submit |
+| `ChapterListViewModel` | Chapters for selected serialized series, search/filter, create/open chapters |
+| `ChapterEditorViewModel` | Chapter metadata editing, submit/cancel, simple page upload/version upload, page/version preview navigation |
 | `EditorChapterReviewViewModel` | Review queue, approve/revision/cancel, markup upload |
 
 ---
@@ -654,7 +753,7 @@ Dummy FileResource logic
 |---|---:|---:|---:|
 | Only serialized series allows chapter CRUD | Yes | Yes | No |
 | Chapter number unique | Pre-check optional | Yes | Unique constraint |
-| Chapter file required before submit | Yes | Yes | FK if required |
+| Chapter page image required before submit | Yes | Yes | FK if required |
 | Revision/cancel requires comments | Yes | Yes | Check constraint |
 
 ---
@@ -666,7 +765,7 @@ Dummy FileResource logic
 | **A** | Backend inspection, WPF project scaffold, API client base, auth/login, shell/navigation, shared models/styles |
 | **B** | Series API client, reference data client, series list/editor, genre/tag selector, cover/proposal upload |
 | **C** | Editor proposal review API/client/UI, board poll/vote API/client/UI |
-| **D** | Chapter API/client/UI, editor chapter review, upload markup/chapter files, integration polish |
+| **D** | Chapter API/client/UI, editor chapter review, upload markup/chapter page images, integration polish |
 
 ---
 
@@ -760,7 +859,7 @@ Board can move series to SERIALIZED or CANCELLED.
 ### Milestone 6 — Chapters
 
 1. Mangaka creates chapters under serialized series.
-2. Upload chapter file.
+2. Upload chapter page image.
 3. Submit chapter for review.
 4. Editor approves or requests revision/cancels.
 5. Optional markup upload.
@@ -825,7 +924,7 @@ Series becomes CANCELLED.
 ```text
 Mangaka selects serialized series.
 Creates chapter.
-Uploads chapter file.
+Uploads chapter page image.
 Submits chapter.
 Editor approves chapter.
 Chapter becomes APPROVED.
@@ -852,7 +951,7 @@ Editor approves.
 | Real upload takes time | Reuse current Cloudinary/FileResource service; keep WPF client upload simple |
 | Auth/JWT integration is too much | Use quick-login endpoint for demo but keep role checks in API |
 | Board close result logic has edge cases | Keep result rule simple: approve > reject = approved, reject > approve = cancelled, tie = no decision |
-| Chapter file purpose does not exist | Add a WPF-compatible file purpose or reuse an existing allowed purpose |
+| Chapter page image purpose does not exist | Add a WPF-compatible file purpose or reuse an existing allowed purpose |
 | Deadline pressure | Prioritize series full lifecycle first, then chapters |
 
 ---

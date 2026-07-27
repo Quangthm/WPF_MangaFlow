@@ -3,6 +3,8 @@
 > **Mục đích:** Tài liệu này ghi lại toàn bộ cấu trúc project, nhiệm vụ từng phần, luồng dữ liệu và quy tắc để các AI session sau có thể triển khai code chính xác, tránh technical debt.
 >
 > **Last updated:** 2026-07-05
+>
+> **Latest WPF mini scope alignment — 2026-07-27:** WPF remains a frontend client that calls the API over HTTP, but it may reference `MangaManagementSystem.Application` DTO/contract classes for API request/response shapes to avoid duplicate client models. WPF must not call Application handlers, repositories, UnitOfWork, DbContext, Infrastructure services, or Domain entities directly. Mangaka scope includes Series CRUD/soft delete, SeriesProposal submission, Chapter CRUD/soft delete, chapter submission for editor review, and simple `ChapterPage` / `ChapterPageVersion` upload + image preview/navigation. Page regions, annotations, assistant tasks, AI/OCR, and canvas editing remain out of scope.
 
 ---
 
@@ -100,11 +102,11 @@ MangaManagementSystem.API
         └── MangaManagementSystem.Domain
         └── MangaManagementSystem.Application (via Interface implementations)
 
-MangaManagementSystem.WpfMini  (standalone — NO references to other projects)
+MangaManagementSystem.WpfMini  (frontend client — may reference Application DTOs/contracts only)
   └── HTTP → MangaManagementSystem.API
 ```
 
-**Quan trọng:** WpfMini là standalone application, không reference trực tiếp các project backend. Nó giao tiếp qua HTTP REST với API.
+**Quan trọng:** WpfMini là frontend client. It may reference `MangaManagementSystem.Application` DTO/contract classes for API request/response shapes, but it must still execute workflows through HTTP REST calls to `MangaManagementSystem.API`. It must not directly call Application handlers/services, Domain entities/repositories, Infrastructure, `DbContext`, or UnitOfWork.
 
 ### 2.2 Chi tiết từng project
 
@@ -122,8 +124,8 @@ Domain/
 │   ├── SeriesContributor.cs   — Junction: User ↔ Series contributor link
 │   ├── Chapter.cs             — Chapter entity (number label, title, status_code...)
 │   ├── ChapterEditorialReview.cs — Editor decision record for chapter
-│   ├── ChapterPage.cs         — Page-level entity (CUT from WPF scope)
-│   ├── ChapterPageVersion.cs  — Page version (CUT from WPF scope)
+│   ├── ChapterPage.cs         — Simple page upload/display entity (WPF scope, limited)
+│   ├── ChapterPageVersion.cs  — Simple page version upload/display entity (WPF scope, limited)
 │   ├── ChapterPageAnnotation.cs — Page annotation (CUT from WPF scope)
 │   ├── ChapterPageTask.cs     — Assistant task (CUT from WPF scope)
 │   ├── PageRegion.cs          — Page region (CUT from WPF scope)
@@ -342,32 +344,52 @@ API/
 
 #### 2.2.5 `MangaManagementSystem.WpfMini` — WPF Desktop Client
 
-**Vai trò:** Standalone WPF desktop app gọi API backend.
+**Vai trò:** WPF desktop frontend client that calls API endpoints. It may reuse Application DTOs/contracts for API request/response models, but all workflow execution still goes through HTTP.
 
 ```
 WpfMini/
 ├── App.xaml / App.xaml.cs           — Entry point, DI setup
-├── MainWindow.xaml / .xaml.cs      — Shell window (ContentControl binds CurrentViewModel)
+├── MainWindow.xaml / .xaml.cs       — Shell window (ContentControl binds CurrentViewModel)
 ├── appsettings.json                 — { "ApiBaseUrl": "http://localhost:5234" }
-├── Models/
-│   ├── AuthModels.cs                — LoginRequest, LoginResponse, TestUserDto
-│   └── CurrentUserSession.cs        — Session model (role checks: IsMangaka, IsEditor...)
+├── Models/                          — WPF-only state/view helper models when needed
+│   ├── AuthModels.cs                — May remain if not using Application auth DTOs
+│   ├── CurrentUserSession.cs        — Session model (role checks: IsMangaka, IsEditor...)
+│   ├── MangakaSeriesModels.cs       — Optional WPF-specific display/helper models
+│   ├── LookupModels.cs              — Optional WPF-specific lookup selection helpers
+│   ├── FileResourceModels.cs        — Optional WPF upload result helpers
+│   ├── ChapterModels.cs             — Optional WPF chapter/page display helpers
+│   └── ChapterPageModels.cs         — Optional WPF page/version display helpers
 ├── Services/
-│   ├── ApiClientBase.cs             — Generic HTTP client (SetAuthToken, GET, POST, PostForm)
-│   └── AuthApiClient.cs             — LoginAsync, GetTestUsersAsync
+│   ├── ApiClientBase.cs             — Generic HTTP client (headers, GET, POST, PostForm, JSON)
+│   ├── AuthApiClient.cs             — LoginAsync, GetTestUsersAsync
+│   ├── MangakaSeriesApiClient.cs    — Series CRUD + proposal submit API calls
+│   ├── MangakaChapterApiClient.cs   — Chapter CRUD + submit API calls
+│   ├── ChapterPageApiClient.cs      — Simple page/version upload + list API calls
+│   ├── ReferenceDataApiClient.cs    — Genres/tags
+│   └── FileUploadApiClient.cs       — Multipart upload helper
 ├── ViewModels/
 │   ├── LoginViewModel.cs            — Login, QuickLogin, LoadTestUsers
 │   ├── MainWindowViewModel.cs       — Session management, navigation (SetSession, Logout)
-│   └── ShellViewModel.cs            — Header + logout relay
+│   ├── ShellViewModel.cs            — Header + role navigation + logout relay
+│   ├── MangakaSeriesListViewModel.cs — Series list/search/filter/open
+│   ├── SeriesEditorViewModel.cs     — Series create/edit/save/submit/cancel
+│   ├── ChapterListViewModel.cs      — Chapter list/search/filter/open for one series
+│   └── ChapterEditorViewModel.cs    — Chapter edit + page upload/version preview/navigation
 ├── Views/
-│   ├── LoginView.xaml / .xaml.cs    — Login form + quick test-user buttons
-│   └── ShellView.xaml / .xaml.cs    — Header (display name + role + logout) + placeholder content
+│   ├── LoginView.xaml / .xaml.cs
+│   ├── ShellView.xaml / .xaml.cs
+│   ├── MangakaSeriesListView.xaml
+│   ├── SeriesEditorView.xaml
+│   ├── ChapterListView.xaml
+│   └── ChapterEditorView.xaml
 ├── Converters/
 │   └── InverseBoolConverter.cs
 ├── Styles/
 │   └── AppStyles.xaml
 └── AssemblyInfo.cs
 ```
+
+**DTO boundary rule:** WPF may deserialize API JSON into Application DTO classes when that is faster than duplicating WPF models. WPF-specific models are still allowed for UI-only state such as selected items, checkbox wrappers, preview state, search/filter state, and `CurrentUserSession`.
 
 ---
 
@@ -400,6 +422,8 @@ Script: `WPFMangaManagementDB.sql` (root project folder)
 | `SeriesContributor` | `manga` | user_id ↔ series_id + role_code |
 | `SeriesProposal` | `manga` | proposal_version_no, proposal_title, synopsis_snapshot, proposal_file_id, status_code (UNDER_EDITORIAL_REVIEW / UNDER_BOARD_REVIEW / REVISION_REQUESTED / APPROVED / CANCELLED / WITHDRAWN) |
 | `Chapter` | `manga` | chapter_number_label, chapter_title, status_code (DRAFT / UNDER_REVIEW / APPROVED / REVISION_REQUESTED / CANCELLED) |
+| `ChapterPage` | `manga` | Logical page slot for a chapter; used in WPF only for simple page upload/navigation. |
+| `ChapterPageVersion` | `manga` | Uploaded image version for a chapter page; used in WPF only for version upload/display. |
 | `ChapterEditorialReview` | `manga` | chapter_id, reviewer_id, decision_code, comments, markup_file_id |
 | `SeriesBoardPoll` | `manga` | series_id, poll_type_code, poll_status_code, started_at_utc, ends_at_utc |
 | `SeriesBoardVote` | `manga` | poll_id, user_id, choice_code (APPROVE/REJECT/ABSTAIN), vote_reason |
@@ -460,28 +484,55 @@ Hiện tại backend Editor dùng `X-Actor-User-Id` header (cũ), Board dùng JW
 
 | Workflow | Tables liên quan | Ghi chú |
 |---|---|---|
-| Auth + Login | `auth.Roles`, `auth.Users` | Quick login + JWT |
-| Series CRUD | `manga.Series`, `manga.SeriesGenre`, `manga.SeriesTag`, `manga.SeriesContributor` | Mangaka tạo/sửa draft |
-| Series Proposal | `manga.SeriesProposal`, `manga.FileResource` | Submit version → editor review |
+| Auth + Login | `auth.Roles`, `auth.Users` | Quick login / simple session for demo; JWT may be reused if ready |
+| Series CRUD | `manga.Series`, `manga.SeriesGenre`, `manga.SeriesTag`, `manga.SeriesContributor` | Mangaka tạo/sửa draft, soft delete/cancel draft |
+| Series Proposal | `manga.SeriesProposal`, `manga.FileResource` | Submit proposal version → editor review |
 | Editor Proposal Review | `manga.SeriesProposal`, `manga.Series` | Request revision / Pass to board / Cancel |
 | Board Poll & Vote | `manga.SeriesBoardPoll`, `manga.SeriesBoardVote` | Chief opens poll → members vote → Chief closes |
-| Chapter CRUD | `manga.Chapter` | Chỉ khi Series = SERIALIZED |
+| Chapter CRUD | `manga.Chapter` | Chỉ khi Series = SERIALIZED; soft delete/cancel draft chapter |
+| Simple Chapter Page Upload | `manga.ChapterPage`, `manga.ChapterPageVersion`, `manga.FileResource` | Upload new page, upload new page version, navigate pages/versions, display selected image preview only |
 | Chapter Review | `manga.ChapterEditorialReview` | Editor approve / revision / cancel |
-| File Upload | `manga.FileResource` | Cover, proposal, markup, chapter files |
+| File Upload | `manga.FileResource` | Cover, proposal, markup, chapter page images |
 
 ### 5.2 ❌ Cắt khỏi WPF scope
 
 | Entity / Workflow | Lý do |
 |---|---|
-| `ChapterPage`, `ChapterPageVersion`, `PageRegion` | Page-level workflow — dùng `Chapter.chapter_file_id` thay thế |
-| `ChapterPageAnnotation` | AI/annotation workflow |
-| `ChapterPageTask` | Assistant task workflow |
-| `Notification` | Real-time notification phức tạp |
-| `AuditEvent` | Audit log không cần cho mini-project |
-| `SeriesRankingSnapshot` | Ranking không cần |
-| `SeriesEditorialReview` | Đã replace bởi `SeriesProposal.reviewed_by_user_id`, `comments`, `markup_file_id` |
-| AI/OCR/segmentation | Out of scope |
+| `PageRegion` | Region/canvas annotation workflow is too large for WPF mini |
+| `ChapterPageAnnotation` | Annotation workflow out of scope |
+| `ChapterPageTask` | Assistant task workflow out of scope |
+| Notification | Real-time notification phức tạp |
+| AuditEvent UI | Audit log screen không cần cho mini-project |
+| SeriesRankingSnapshot / Ranking | Ranking không cần |
+| SeriesEditorialReview | Đã replace bởi `SeriesProposal.reviewed_by_user_id`, `comments`, `markup_file_id` |
+| AI/OCR/segmentation/translation/canvas editing | Out of scope |
 
+### 5.3 DTO/reference boundary for WPF
+
+WPF may reference `MangaManagementSystem.Application` DTO/contract classes for API request/response shapes. This is allowed only for data contracts and display models returned by API endpoints.
+
+WPF must not directly reference or call:
+
+- Application command/query handlers
+- Application services used for business execution
+- Domain entities as editable UI models
+- Domain repository interfaces
+- Infrastructure repositories/services
+- `ApplicationDbContext`
+- UnitOfWork
+- direct SQL/Dapper access
+
+The runtime flow remains:
+
+```text
+WPF View
+→ WPF ViewModel
+→ Frontend API client
+→ HTTP JSON / multipart
+→ ASP.NET Core API
+→ MediatR/Application handler
+→ EF Core/SQL
+```
 ---
 
 ## 6. API Endpoints Plan (cho WpfMini)

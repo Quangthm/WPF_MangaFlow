@@ -17,14 +17,20 @@
             <DataTemplate DataType="{x:Type vm:ShellViewModel}">
                 <views:ShellView/>
             </DataTemplate>
-            <DataTemplate DataType="{x:Type vm:EditorProposalReviewViewModel}">
-                <views:EditorProposalReviewView/>
-            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:EditorDashboardViewModel}">
                 <views:EditorDashboardView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditorProposalReviewViewModel}">
+                <views:EditorProposalReviewView/>
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:EditorChapterReviewViewModel}">
                 <views:EditorChapterReviewView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:MangakaSeriesListViewModel}">
+                <views:MangakaSeriesListView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SeriesEditorViewModel}">
+                <views:SeriesEditorView/>
             </DataTemplate>
 
             <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>

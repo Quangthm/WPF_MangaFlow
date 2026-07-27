@@ -6,9 +6,9 @@
 **Core required flows:**
 
 1. **Series CRUD → Editor approve/reject → Editorial Board vote**
-2. **Chapter CRUD → Editor approve/reject**
+2. **Chapter CRUD + simple page/version upload-preview → Editor approve/reject**
 
-This plan assumes the mini-project should stay close to the existing MangaFlow design while cutting page-level production workflow, assistant task workflow, AI, notification, ranking, and full audit complexity.
+This plan assumes the mini-project should stay close to the existing MangaFlow design while cutting advanced page-level production workflow, assistant task workflow, AI, notification, ranking, and full audit complexity. Simple `ChapterPage` / `ChapterPageVersion` upload, image preview, and page/version navigation are included for the Mangaka chapter editor.
 
 ---
 
@@ -26,7 +26,8 @@ The updated direction is stronger for implementation speed because it matches th
 - Genres/tags stay normalized through `Genre`, `Tag`, `SeriesGenre`, and `SeriesTag`.
 - `SeriesBoardPoll` and `SeriesBoardVote` remain tied to `series_id`, not `series_proposal_id`.
 - Board voting still uses real votes: `APPROVE`, `REJECT`, and `ABSTAIN`.
-- `Chapter` and `ChapterEditorialReview` support chapter CRUD and editor review.
+- `Chapter`, `ChapterPage`, `ChapterPageVersion`, and `ChapterEditorialReview` support chapter CRUD, simple page upload/version preview, and editor review.
+- WPF may reuse Application DTOs/contracts for API request/response shapes, while still calling backend workflows through HTTP API clients.
 - Audit logs are intentionally excluded to keep the WPF project smaller.
 
 The key interpretation is:
@@ -52,7 +53,7 @@ The selected mini-project schema should include:
 | Files | `manga.FileResource` |
 | Series | `manga.Series`, `manga.SeriesProposal`, `manga.SeriesContributor` |
 | Genre/Tag | `manga.Genre`, `manga.SeriesGenre`, `manga.Tag`, `manga.SeriesTag` |
-| Chapter | `manga.Chapter`, `manga.ChapterEditorialReview` |
+| Chapter | `manga.Chapter`, `manga.ChapterPage`, `manga.ChapterPageVersion`, `manga.ChapterEditorialReview` |
 | Board | `manga.SeriesBoardPoll`, `manga.SeriesBoardVote`, `manga.vw_SeriesBoardPollVoteSummary` |
 
 The selected schema should **not** include:
@@ -61,9 +62,7 @@ The selected schema should **not** include:
 |---|---|
 | `manga.SeriesEditorialReview` | Replaced by `SeriesProposal.reviewed_by_user_id`, `reviewed_at_utc`, `comments`, and `markup_file_id` |
 | `Series.proposal_file_id` | Proposal file belongs to each submitted `SeriesProposal` version |
-| `ChapterPage` | Page-level workflow cut from WPF scope |
-| `ChapterPageVersion` | Replaced by `Chapter.chapter_file_id` for the mini-project |
-| `PageRegion` | Page annotation/AI workflow cut |
+| `PageRegion` | Region/canvas annotation workflow cut; simple page upload/version preview remains in scope |
 | `ChapterPageAnnotation` | Out of scope |
 | `ChapterPageTask` | Assistant task workflow out of scope |
 | `audit.AuditEvent` | Optional; intentionally cut for time |
@@ -149,19 +148,23 @@ System computes result from votes
 
 The existing `vw_SeriesBoardPollVoteSummary` supports the vote summary and result computation.
 
-### 3.5 Chapter page workflow is cut
+### 3.5 Simple chapter page/version upload is included
 
-The WPF mini-project uses `Chapter.chapter_file_id` as the simplified replacement for the full page/page-version workflow.
+The WPF mini-project keeps a small subset of the full page workflow:
 
-Cut from WPF scope:
+```text
+Upload New Page
+→ create a new logical ChapterPage
+→ create ChapterPageVersion version 1
+→ show the uploaded image in ChapterEditorView
 
-- `ChapterPage`
-- `ChapterPageVersion`
-- `PageRegion`
-- `ChapterPageAnnotation`
-- `ChapterPageTask`
-- AI segmentation/OCR
-- Assistant page task workflow
+Upload New Page Version
+→ use the selected ChapterPage
+→ create the next ChapterPageVersion
+→ show the selected/new version in ChapterEditorView
+```
+
+This is only for upload, display, and navigation. The WPF mini-project does not implement page region creation, annotations, assistant tasks, AI segmentation/OCR, translation tools, or canvas editing.
 
 ---
 
@@ -195,6 +198,26 @@ Blazor Razor page → typed API client → API → MediatR → DB
 New:
 WPF ViewModel → typed API client → API → MediatR → DB
 ```
+
+### 4.2A Application DTO reuse rule
+
+WPF may reference `MangaManagementSystem.Application` DTO/contract classes for API request/response models to reduce duplication.
+
+Allowed:
+
+```text
+WPF API client returns Application DTOs
+WPF ViewModel stores/binds Application DTOs
+WPF sends Application request DTOs through HTTP JSON/multipart API clients
+```
+
+Not allowed:
+
+```text
+WPF directly calls MediatR handlers, Application services, repositories, UnitOfWork, DbContext, Infrastructure services, or Domain entities for workflow execution
+```
+
+WPF-only model classes should be used for UI-only state such as selected rows, checkbox wrappers, local file picker state, preview navigation indexes, search/filter values, and `CurrentUserSession`.
 
 ### 4.3 Fallback architecture if time is limited
 
@@ -344,7 +367,9 @@ MangaManagementSystem.WpfMini/
 │   ├── SeriesModels.cs
 │   ├── SeriesProposalModels.cs
 │   ├── ChapterModels.cs
+│   ├── ChapterPageModels.cs
 │   └── BoardModels.cs
+│   # Application DTOs/contracts may replace duplicated request/response models where practical.
 │
 ├── Services/
 │   ├── ApiClientBase.cs
@@ -354,6 +379,8 @@ MangaManagementSystem.WpfMini/
 │   ├── SeriesProposalApiClient.cs
 │   ├── BoardApiClient.cs
 │   ├── ChapterApiClient.cs
+│   ├── ChapterPageApiClient.cs
+│   ├── FileUploadApiClient.cs
 │   ├── FilePickerService.cs
 │   └── DialogService.cs
 │
@@ -366,6 +393,7 @@ MangaManagementSystem.WpfMini/
 │   ├── BoardPollListViewModel.cs
 │   ├── BoardPollDetailViewModel.cs
 │   ├── ChapterListViewModel.cs
+│   ├── ChapterEditorViewModel.cs
 │   └── EditorChapterReviewViewModel.cs
 │
 ├── Views/
@@ -377,6 +405,7 @@ MangaManagementSystem.WpfMini/
 │   ├── BoardPollListView.xaml
 │   ├── BoardPollDetailView.xaml
 │   ├── ChapterListView.xaml
+│   ├── ChapterEditorView.xaml
 │   └── EditorChapterReviewView.xaml
 │
 ├── Converters/
@@ -413,9 +442,11 @@ Features:
 - Search by title.
 - Filter by status.
 - Create new draft.
-- Edit series if `Series.status_code = PROPOSAL_DRAFT`.
-- Delete/cancel draft if `Series.status_code = PROPOSAL_DRAFT`.
-- Submit for editorial review if valid.
+- Open a selected series in `SeriesEditorView`.
+- Create a new series draft.
+- Search/filter by title and status.
+- Show status and latest proposal summary.
+- Do not perform submit/cancel directly from the list; workflow actions belong in `SeriesEditorView`.
 - Show latest proposal version/status if the series has been submitted before.
 - Show latest editor feedback when the latest proposal was marked `REVISION_REQUESTED`.
 
@@ -571,21 +602,20 @@ Series.status_code = SERIALIZED
 
 Features:
 
-- Select serialized series.
-- List chapters.
+- List chapters for the selected serialized series.
+- Search/filter chapters by title, number label, and status.
 - Create chapter.
-- Edit chapter if `DRAFT` or `REVISION_REQUESTED`.
-- Delete/cancel chapter if `DRAFT`.
-- Attach chapter file.
-- Submit chapter for review.
+- Open selected chapter in `ChapterEditorView`.
+- Show chapter status and page count summary.
+- Do not perform submit/cancel directly from the list; workflow actions belong in `ChapterEditorView`.
 
 Fields:
 
 - Chapter number label
 - Chapter title
-- Chapter file
-- Planned release date
-- Status
+- Page count
+- Current status
+- Planned release date if used
 - Last updated
 
 ### 9.2 Submit Chapter
@@ -600,10 +630,34 @@ Backend should:
 
 1. Validate actor is Mangaka contributor.
 2. Validate series is `SERIALIZED`.
-3. Validate chapter file exists.
+3. Validate the chapter has at least one `ChapterPage` with at least one current/displayable `ChapterPageVersion`.
 4. Update `Chapter.status_code = UNDER_REVIEW`.
 
-### 9.3 Editor Chapter Review Queue
+### 9.3 Simple Chapter Page and Version Upload
+
+This is part of `ChapterEditorView`, not a separate page workspace.
+
+Supported actions:
+
+| Action | Meaning |
+|---|---|
+| Upload New Page | Create a new logical `ChapterPage` and first `ChapterPageVersion` from the selected image file. |
+| Upload New Page Version | Create a newer `ChapterPageVersion` for the currently selected `ChapterPage`. |
+| Previous/Next Page | Move between logical pages in the chapter. |
+| Page number boxes | Quick navigation to a logical page. |
+| Previous/Next Version | Move between versions of the selected logical page. |
+| Image preview | Show the selected page/version image in a simple placeholder area. |
+
+Out of scope for this area:
+
+- Page regions
+- Annotation tools
+- Assistant task tools
+- AI/OCR/segmentation
+- Translation tools
+- Canvas drawing/editing
+
+### 9.4 Editor Chapter Review Queue
 
 Query:
 
@@ -635,7 +689,7 @@ file_size_bytes
 sha256_hash
 ```
 
-For the WPF mini-project, use local test values instead of actual Cloudinary upload.
+For the WPF mini-project, prefer the existing backend upload service when available. If Cloudinary is not ready for demo, local test values may be used temporarily behind the same FileResource contract.
 
 When the user selects a local file:
 
@@ -655,9 +709,9 @@ Recommended file purposes:
 | `SERIES_COVER` | `Series.cover_file_id` |
 | `SERIES_PROPOSAL` | `SeriesProposal.proposal_file_id` |
 | `EDITORIAL_ATTACHMENT` | `SeriesProposal.markup_file_id`, `ChapterEditorialReview.markup_file_id` |
-| `CHAPTER_PAGE_VERSION` | `Chapter.chapter_file_id` in the mini-project, even though the name comes from full MangaFlow |
+| `CHAPTER_PAGE_VERSION` | `ChapterPageVersion.file_resource_id` for uploaded chapter page images and newer page versions |
 
-If the purpose name feels confusing for chapter package files, either reuse `CHAPTER_PAGE_VERSION` for compatibility or add `CHAPTER_PACKAGE` to the check constraint.
+Do not add a single `chapter_file_id` shortcut for the clarified Mangaka scope. Chapter content is represented by simple `ChapterPage` and `ChapterPageVersion` upload/display records.
 
 ---
 
@@ -696,7 +750,16 @@ If the purpose name feels confusing for chapter package files, either reuse `CHA
 | `ReturnChapterForRevision` | Insert review, `UNDER_REVIEW → REVISION_REQUESTED` |
 | `CancelChapterReview` | Insert review, `UNDER_REVIEW → CANCELLED` |
 
-### 11.4 Reference data queries
+### 11.4 Chapter page/version commands
+
+| Command | Purpose |
+|---|---|
+| `GetChapterPages` | Load logical pages and versions for a chapter |
+| `UploadNewChapterPage` | Create `ChapterPage` + first `ChapterPageVersion` from uploaded image |
+| `UploadNewChapterPageVersion` | Create next `ChapterPageVersion` for selected page |
+| `SetCurrentChapterPageVersion` | Optional if the schema supports choosing a current version |
+
+### 11.5 Reference data queries
 
 | Query | Purpose |
 |---|---|
@@ -708,6 +771,7 @@ If the purpose name feels confusing for chapter package files, either reuse `CHA
 | `GetProposalReviewQueue` | Editor queue |
 | `GetBoardPolls` | Board poll list + vote summary |
 | `GetChaptersForSeries` | Chapter CRUD |
+| `GetChapterPages` | Page/version preview for ChapterEditor |
 | `GetChapterReviewQueue` | Editor chapter queue |
 
 ---
@@ -772,6 +836,14 @@ DELETE /api/wpf/chapters/{chapterId}
 POST   /api/wpf/chapters/{chapterId}/submit
 ```
 
+### Chapter pages and versions
+
+```text
+GET  /api/wpf/chapters/{chapterId}/pages
+POST /api/wpf/chapters/{chapterId}/pages
+POST /api/wpf/chapter-pages/{chapterPageId}/versions
+```
+
 ### Editor chapter review
 
 ```text
@@ -794,7 +866,8 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 | `EditorProposalReviewViewModel` | Proposal review queue, request revision/pass/cancel actions |
 | `BoardPollListViewModel` | Poll list, vote counts, filters, open poll |
 | `BoardPollDetailViewModel` | Cast vote, close/cancel poll, vote summary, latest proposal display |
-| `ChapterListViewModel` | Chapter CRUD, file selection, submit chapter |
+| `ChapterListViewModel` | Chapter list/search/filter/open for selected serialized series |
+| `ChapterEditorViewModel` | Chapter create/edit/save/soft-delete/submit, page upload, page version upload, preview/navigation |
 | `EditorChapterReviewViewModel` | Chapter review queue, approve/return/cancel |
 
 ---
@@ -822,11 +895,11 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 - Status filter.
 - Series table/cards.
 - Create button.
-- Edit button.
-- Submit Proposal button.
+- Open/Edit button.
+- No direct Submit Proposal button in the list; submit belongs in `SeriesEditorView`.
 - Latest proposal status/version badge.
 - Latest editor feedback display when returned.
-- Manage Chapters button for serialized series.
+- Manage Chapters / View Chapters entry for serialized series, preferably from `SeriesEditorView`.
 - Status badges.
 
 ### 14.4 Series Editor View
@@ -875,7 +948,7 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 - Serialized series selector.
 - Chapter table.
 - Add/Edit chapter form.
-- Chapter file picker.
+- Chapter page image picker.
 - Submit chapter button.
 - Status badge.
 
@@ -883,7 +956,7 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 
 - Chapter review queue.
 - Chapter detail panel.
-- Chapter file metadata.
+- Chapter page image metadata.
 - Comments textbox.
 - Markup file picker.
 - Approve button.
@@ -938,7 +1011,7 @@ POST /api/wpf/editor/chapters/{chapterId}/cancel
 |---|---|
 | Chapter number unique per series | DB + WPF |
 | Chapter belongs to serialized series | Backend |
-| Chapter file required before submit | WPF + backend |
+| Chapter page image required before submit | WPF + backend |
 | Only Mangaka contributor can create/edit/submit | Backend |
 | Only Editor can review | Backend |
 | Revision/cancel review requires comments or markup | DB + WPF |
@@ -1060,7 +1133,7 @@ Board can move series UNDER_BOARD_REVIEW → SERIALIZED or CANCELLED.
 2. Chapter list.
 3. Create chapter.
 4. Edit chapter.
-5. Attach chapter file.
+5. Attach chapter page image.
 6. Submit chapter for review.
 
 Deliverable:
@@ -1177,7 +1250,7 @@ Series becomes CANCELLED.
 ```text
 Mangaka selects serialized series.
 Creates chapter.
-Attaches chapter file.
+Attaches chapter page image.
 Submits for review.
 Editor approves.
 Chapter.status_code becomes APPROVED.

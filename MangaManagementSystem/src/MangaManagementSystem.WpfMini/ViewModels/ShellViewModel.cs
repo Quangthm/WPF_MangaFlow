@@ -13,11 +13,14 @@ public partial class ShellViewModel : ObservableObject
     private CurrentUserSession? _session;
 
     [ObservableProperty]
-    private ObservableObject? _currentEditorViewModel;
+    private ObservableObject? _currentContentViewModel;
 
     // Navigation state
     [ObservableProperty]
     private bool _isOnDashboard;
+
+    [ObservableProperty]
+    private bool _isOnMangakaSeries;
 
     [ObservableProperty]
     private bool _isOnProposalReview;
@@ -29,6 +32,9 @@ public partial class ShellViewModel : ObservableObject
     private bool _isOnBoardPolls;
 
     // Role visibility flags
+    [ObservableProperty]
+    private bool _isMangaka;
+
     [ObservableProperty]
     private bool _isEditor;
 
@@ -43,61 +49,79 @@ public partial class ShellViewModel : ObservableObject
         // Set role flags
         if (Session is not null)
         {
+            IsMangaka = Session.IsMangaka;
             IsEditor = Session.IsEditor;
             IsBoardRole = Session.IsBoardRole;
         }
 
-        // Default to Dashboard for editor
-        if (IsEditor)
+        // Default landing page after login by role.
+        if (IsMangaka)
+        {
+            NavigateToMangakaSeriesCommand.Execute(null);
+        }
+        else if (IsEditor)
         {
             NavigateToDashboardCommand.Execute(null);
+        }
+        else if (IsBoardRole)
+        {
+            NavigateToBoardPollsCommand.Execute(null);
         }
     }
 
     [RelayCommand]
     private void NavigateToDashboard()
     {
+        ClearNavigationState();
         IsOnDashboard = true;
-        IsOnProposalReview = false;
-        IsOnChapterReview = false;
-        IsOnBoardPolls = false;
-        CurrentEditorViewModel = App.ServiceProvider.GetRequiredService<EditorDashboardViewModel>();
+        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<EditorDashboardViewModel>();
+    }
+
+    [RelayCommand]
+    private void NavigateToMangakaSeries()
+    {
+        ClearNavigationState();
+        IsOnMangakaSeries = true;
+        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<MangakaSeriesListViewModel>();
     }
 
     [RelayCommand]
     private void NavigateToProposalReview()
     {
-        IsOnDashboard = false;
+        ClearNavigationState();
         IsOnProposalReview = true;
-        IsOnChapterReview = false;
-        IsOnBoardPolls = false;
-        CurrentEditorViewModel = App.ServiceProvider.GetRequiredService<EditorProposalReviewViewModel>();
+        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<EditorProposalReviewViewModel>();
     }
 
     [RelayCommand]
     private void NavigateToChapterReview()
     {
-        IsOnDashboard = false;
-        IsOnProposalReview = false;
+        ClearNavigationState();
         IsOnChapterReview = true;
-        IsOnBoardPolls = false;
-        CurrentEditorViewModel = App.ServiceProvider.GetRequiredService<EditorChapterReviewViewModel>();
+        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<EditorChapterReviewViewModel>();
     }
 
     [RelayCommand]
     private void NavigateToBoardPolls()
     {
-        IsOnDashboard = false;
-        IsOnProposalReview = false;
-        IsOnChapterReview = false;
+        ClearNavigationState();
         IsOnBoardPolls = true;
-        // BoardPollListViewModel sẽ được tạo sau
-        CurrentEditorViewModel = null;
+        // Replace this with BoardPollListViewModel later when you implement board UI.
+        CurrentContentViewModel = null;
     }
 
     [RelayCommand]
     private void Logout()
     {
         _mainVm.LogoutCommand.Execute(null);
+    }
+
+    private void ClearNavigationState()
+    {
+        IsOnDashboard = false;
+        IsOnMangakaSeries = false;
+        IsOnProposalReview = false;
+        IsOnChapterReview = false;
+        IsOnBoardPolls = false;
     }
 }

@@ -1,10 +1,6 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using MangaManagementSystem.Application.DTOs.Auth;
 using MangaManagementSystem.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
 
 namespace MangaManagementSystem.API.Controllers;
 
@@ -23,16 +19,13 @@ public sealed class WpfAuthController : ControllerBase
     };
 
     private readonly IAuthService _authService;
-    private readonly IConfiguration _configuration;
     private readonly ILogger<WpfAuthController> _logger;
 
     public WpfAuthController(
         IAuthService authService,
-        IConfiguration configuration,
         ILogger<WpfAuthController> logger)
     {
         _authService = authService;
-        _configuration = configuration;
         _logger = logger;
     }
 
@@ -66,23 +59,19 @@ public sealed class WpfAuthController : ControllerBase
 
             var roleCode = MapRoleNameToCode(result.RoleName);
 
-            var expiresAtUtc = DateTime.UtcNow.AddDays(14);
-            var accessToken = GenerateJwtToken(result.User, result.RoleName, expiresAtUtc);
-
             _logger.LogInformation("WPF login succeeded for user {Username} with role {Role} -> code {RoleCode}", request.Username, result.RoleName, roleCode);
 
             return Ok(new
             {
                 userId = result.User.UserId.ToString(),
                 username = result.User.Username,
-                roleCode,
-                token = accessToken
+                roleCode
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "WPF login failed with unexpected error for user {Username}", request.Username);
-            return StatusCode(500, new { error = $"Internal server error: {ex.GetType().Name} — {ex.Message}" });
+            return StatusCode(500, new { error = "An unexpected error occurred. Please try again later." });
         }
     }
 
@@ -106,49 +95,17 @@ public sealed class WpfAuthController : ControllerBase
     {
         var testUsers = new[]
         {
-            new { userId = "00000000-0000-0000-0000-000000000001", username = "editor1", displayName = "Editor One", roleCode = "EDITOR" },
-            new { userId = "00000000-0000-0000-0000-000000000002", username = "boardchief1", displayName = "Board Chief One", roleCode = "BOARD_CHIEF" },
-            new { userId = "00000000-0000-0000-0000-000000000003", username = "mangaka1", displayName = "Mangaka One", roleCode = "MANGAKA" },
+            new { username = "TestEditor1", displayName = "TestEditor1 (Tantou Editor)", roleCode = "EDITOR" },
+            new { username = "TestBoardChief1", displayName = "TestBoardChief1 (Board Chief)", roleCode = "BOARD_CHIEF" },
+            new { username = "TestBoardMember1", displayName = "TestBoardMember1 (Board Member)", roleCode = "BOARD_MEMBER" },
+            new { username = "TestMangaka1", displayName = "TestMangaka1 (Mangaka)", roleCode = "MANGAKA" },
+            new { username = "TestAssistant1", displayName = "TestAssistant1 (Assistant)", roleCode = "ASSISTANT" },
+            new { username = "TestAdmin", displayName = "TestAdmin (Admin)", roleCode = "ADMIN" },
         };
 
         return Ok(testUsers);
     }
 
-    private string GenerateJwtToken(UserDto user, string roleName, DateTime expiresAtUtc)
-    {
-        var jwtKey = _configuration["Jwt:Key"]
-            ?? throw new InvalidOperationException("Jwt:Key is missing.");
-
-        var jwtIssuer = _configuration["Jwt:Issuer"]
-            ?? throw new InvalidOperationException("Jwt:Issuer is missing.");
-
-        var jwtAudience = _configuration["Jwt:Audience"]
-            ?? throw new InvalidOperationException("Jwt:Audience is missing.");
-
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
-            new(ClaimTypes.NameIdentifier, user.UserId.ToString()),
-            new(ClaimTypes.Name, user.Username),
-            new(ClaimTypes.Role, roleName),
-            new("user_id", user.UserId.ToString())
-        };
-
-        var signingKey = new SymmetricSecurityKey(
-            Encoding.UTF8.GetBytes(jwtKey));
-
-        var credentials = new SigningCredentials(
-            signingKey, SecurityAlgorithms.HmacSha256);
-
-        var token = new JwtSecurityToken(
-            issuer: jwtIssuer,
-            audience: jwtAudience,
-            claims: claims,
-            expires: expiresAtUtc,
-            signingCredentials: credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
 }
 
 /// <summary>

@@ -49,6 +49,25 @@
             <!-- ═══ Sidebar ═══ -->
             <Border Grid.Column="0" Width="220" Background="#34495e">
                 <StackPanel Margin="0,10">
+                    <!-- Mangaka section -->
+                    <TextBlock Text="MANGAKA"
+                               Foreground="#7f8c8d"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               Margin="15,10,15,5"
+                               Visibility="{Binding IsMangaka, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                    <RadioButton Content="My Series"
+                                 IsChecked="{Binding IsOnMangakaSeries}"
+                                 Command="{Binding NavigateToMangakaSeriesCommand}"
+                                 Foreground="White"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 Padding="15,8"
+                                 Margin="0,2"
+                                 FontSize="14"
+                                 Cursor="Hand"
+                                 Visibility="{Binding IsMangaka, Converter={StaticResource BoolToVisibilityConverter}}"/>
                     <!-- Section: Editor -->
                     <TextBlock Text="EDITOR" Foreground="#7f8c8d" FontSize="11"
                                FontWeight="Bold" Margin="15,10,15,5" 
@@ -93,6 +112,7 @@
                                  BorderThickness="0" Padding="15,8" Margin="0,2"
                                  FontSize="14" Cursor="Hand"
                                  Visibility="{Binding IsEditor, Converter={StaticResource BoolToVisibilityConverter}}">
+                        
                         <RadioButton.Resources>
                             <Style TargetType="RadioButton">
                                 <Setter Property="Template">
@@ -191,7 +211,7 @@
 
             <!-- ═══ Main Content Area ═══ -->
             <Border Grid.Column="1" Background="#ecf0f1">
-                <ContentControl Content="{Binding CurrentEditorViewModel}"/>
+                <ContentControl Content="{Binding CurrentContentViewModel}"/>
             </Border>
         </Grid>
     </Grid>
