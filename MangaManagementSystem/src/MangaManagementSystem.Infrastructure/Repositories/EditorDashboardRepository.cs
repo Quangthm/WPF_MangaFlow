@@ -51,6 +51,10 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     .Any(asc => asc.SeriesId == s.SeriesId && asc.UserId == actorUserId))
                 .CountAsync(ct);
 
+            int completedProposalCount = await _dbContext.SeriesProposals
+                .AsNoTracking()
+                .CountAsync(sp => sp.StatusCode != ProposalStatusUnderEditorialReview, ct);
+
             // Proposal review queue preview: newest UNDER_EDITORIAL_REVIEW proposals first.
             List<SeriesProposal> proposalQueue = await _dbContext.SeriesProposals
                 .AsNoTracking()
@@ -78,6 +82,7 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 chaptersUnderReviewCount,
                 pendingAnnotationCount,
                 serializedSeriesCount,
+                completedProposalCount,
                 proposalQueue,
                 recentSeries);
         }

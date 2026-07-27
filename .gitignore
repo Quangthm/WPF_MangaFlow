@@ -430,3 +430,6 @@ FodyWeavers.xsd
 
 # Secret credentials (contains API keys, SMTP passwords, etc.)
 setup-secrets.ps1
+
+.slim/deepwork/
+

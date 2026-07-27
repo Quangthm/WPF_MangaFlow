@@ -3,6 +3,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using MangaManagementSystem.API.Contracts;
 using MangaManagementSystem.Application.DTOs.Editor;
+using MangaManagementSystem.Application.Features.Editor.ChapterReviews.Commands.ApproveChapterReview;
+using MangaManagementSystem.Application.Features.Editor.ChapterReviews.Commands.PublishChapter;
+using MangaManagementSystem.Application.Features.Editor.ChapterReviews.Commands.PutChapterOnHold;
+using MangaManagementSystem.Application.Features.Editor.ChapterReviews.Commands.RejectChapterReview;
 using MangaManagementSystem.Application.Features.Editor.ChapterReviews.Queries.GetEditorChapterReviewDetail;
 using MangaManagementSystem.Application.Features.Editor.ChapterReviews.Queries.GetEditorChapterReviewQueue;
 using MediatR;
@@ -118,5 +122,150 @@ namespace MangaManagementSystem.API.Controllers.Editor
 
             return false;
         }
+
+        // ── Approve Chapter ──
+        [HttpPost("{chapterId:guid}/approve")]
+        public async Task<IActionResult> ApproveChapterAsync(
+            Guid chapterId,
+            [FromBody] ChapterReviewActionRequest? request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryResolveActorUserId(out Guid actorUserId))
+            {
+                return BadRequest(new ApiErrorResponse(
+                    "Could not identify the requesting user. Please sign in again."));
+            }
+
+            var command = new ApproveChapterReviewCommand(
+                chapterId, actorUserId,
+                string.IsNullOrWhiteSpace(request?.Feedback) ? null : request.Feedback.Trim());
+
+            try
+            {
+                var result = await _mediator.Send(command, cancellationToken);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error approving chapter {ChapterId}.", chapterId);
+                return Problem(
+                    detail: "We could not approve the chapter right now. Please try again later.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        // ── Reject Chapter (Request Revision) ──
+        [HttpPost("{chapterId:guid}/reject")]
+        public async Task<IActionResult> RejectChapterAsync(
+            Guid chapterId,
+            [FromBody] ChapterReviewActionRequest request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryResolveActorUserId(out Guid actorUserId))
+            {
+                return BadRequest(new ApiErrorResponse(
+                    "Could not identify the requesting user. Please sign in again."));
+            }
+
+            if (string.IsNullOrWhiteSpace(request?.Feedback))
+            {
+                return BadRequest(new ApiErrorResponse("Feedback is required to request a revision."));
+            }
+
+            var command = new RejectChapterReviewCommand(chapterId, actorUserId, request.Feedback.Trim());
+
+            try
+            {
+                var result = await _mediator.Send(command, cancellationToken);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error rejecting chapter {ChapterId}.", chapterId);
+                return Problem(
+                    detail: "We could not reject the chapter right now. Please try again later.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        // ── Put Chapter On Hold ──
+        [HttpPost("{chapterId:guid}/hold")]
+        public async Task<IActionResult> PutChapterOnHoldAsync(
+            Guid chapterId,
+            [FromBody] ChapterReviewActionRequest? request,
+            CancellationToken cancellationToken)
+        {
+            if (!TryResolveActorUserId(out Guid actorUserId))
+            {
+                return BadRequest(new ApiErrorResponse(
+                    "Could not identify the requesting user. Please sign in again."));
+            }
+
+            var command = new PutChapterOnHoldCommand(
+                chapterId, actorUserId,
+                string.IsNullOrWhiteSpace(request?.Feedback) ? null : request.Feedback.Trim());
+
+            try
+            {
+                var result = await _mediator.Send(command, cancellationToken);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error putting chapter {ChapterId} on hold.", chapterId);
+                return Problem(
+                    detail: "We could not put the chapter on hold right now. Please try again later.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        // ── Publish Chapter ──
+        [HttpPost("{chapterId:guid}/publish")]
+        public async Task<IActionResult> PublishChapterAsync(
+            Guid chapterId,
+            CancellationToken cancellationToken)
+        {
+            if (!TryResolveActorUserId(out Guid actorUserId))
+            {
+                return BadRequest(new ApiErrorResponse(
+                    "Could not identify the requesting user. Please sign in again."));
+            }
+
+            var command = new PublishChapterCommand(chapterId, actorUserId);
+
+            try
+            {
+                var result = await _mediator.Send(command, cancellationToken);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new ApiErrorResponse(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error publishing chapter {ChapterId}.", chapterId);
+                return Problem(
+                    detail: "We could not publish the chapter right now. Please try again later.",
+                    statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
     }
 }
+
+/// <summary>
+/// Request body for chapter review actions that accept optional feedback.
+/// </summary>
+public sealed record ChapterReviewActionRequest(string? Feedback);

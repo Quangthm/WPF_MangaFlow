@@ -42,7 +42,9 @@ public partial class App : Application
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<LoginViewModel>();
         services.AddTransient<ShellViewModel>();
+        services.AddTransient<EditorDashboardViewModel>();
         services.AddTransient<EditorProposalReviewViewModel>();
+        services.AddTransient<EditorChapterReviewViewModel>();
 
         ServiceProvider = services.BuildServiceProvider();
 

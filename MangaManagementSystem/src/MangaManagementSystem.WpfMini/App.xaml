@@ -20,6 +20,12 @@
             <DataTemplate DataType="{x:Type vm:EditorProposalReviewViewModel}">
                 <views:EditorProposalReviewView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditorDashboardViewModel}">
+                <views:EditorDashboardView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditorChapterReviewViewModel}">
+                <views:EditorChapterReviewView/>
+            </DataTemplate>
 
             <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <converters:StatusToBrushConverter x:Key="StatusToBrushConverter"/>

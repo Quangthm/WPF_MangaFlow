@@ -94,6 +94,7 @@ namespace MangaManagementSystem.Application.Features.Editor.Dashboard.Queries.Ge
                 data.ChaptersUnderReviewCount,
                 data.PendingAnnotationCount,
                 data.SerializedSeriesCount,
+                data.CompletedProposalCount,
                 proposalQueue,
                 recentSeries);
         }

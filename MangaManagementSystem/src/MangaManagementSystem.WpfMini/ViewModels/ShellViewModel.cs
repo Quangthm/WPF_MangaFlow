@@ -17,7 +17,13 @@ public partial class ShellViewModel : ObservableObject
 
     // Navigation state
     [ObservableProperty]
+    private bool _isOnDashboard;
+
+    [ObservableProperty]
     private bool _isOnProposalReview;
+
+    [ObservableProperty]
+    private bool _isOnChapterReview;
 
     [ObservableProperty]
     private bool _isOnBoardPolls;
@@ -41,25 +47,49 @@ public partial class ShellViewModel : ObservableObject
             IsBoardRole = Session.IsBoardRole;
         }
 
-        // Default to Proposal Review for editor
+        // Default to Dashboard for editor
         if (IsEditor)
         {
-            NavigateToProposalReviewCommand.Execute(null);
+            NavigateToDashboardCommand.Execute(null);
         }
+    }
+
+    [RelayCommand]
+    private void NavigateToDashboard()
+    {
+        IsOnDashboard = true;
+        IsOnProposalReview = false;
+        IsOnChapterReview = false;
+        IsOnBoardPolls = false;
+        CurrentEditorViewModel = App.ServiceProvider.GetRequiredService<EditorDashboardViewModel>();
     }
 
     [RelayCommand]
     private void NavigateToProposalReview()
     {
+        IsOnDashboard = false;
         IsOnProposalReview = true;
+        IsOnChapterReview = false;
         IsOnBoardPolls = false;
         CurrentEditorViewModel = App.ServiceProvider.GetRequiredService<EditorProposalReviewViewModel>();
     }
 
     [RelayCommand]
+    private void NavigateToChapterReview()
+    {
+        IsOnDashboard = false;
+        IsOnProposalReview = false;
+        IsOnChapterReview = true;
+        IsOnBoardPolls = false;
+        CurrentEditorViewModel = App.ServiceProvider.GetRequiredService<EditorChapterReviewViewModel>();
+    }
+
+    [RelayCommand]
     private void NavigateToBoardPolls()
     {
+        IsOnDashboard = false;
         IsOnProposalReview = false;
+        IsOnChapterReview = false;
         IsOnBoardPolls = true;
         // BoardPollListViewModel sẽ được tạo sau
         CurrentEditorViewModel = null;

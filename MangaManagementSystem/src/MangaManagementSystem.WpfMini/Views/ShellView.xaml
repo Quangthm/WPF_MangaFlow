@@ -54,9 +54,73 @@
                                FontWeight="Bold" Margin="15,10,15,5" 
                                Visibility="{Binding IsEditor, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
+                    <RadioButton Content="📊 Dashboard"
+                                 IsChecked="{Binding IsOnDashboard}"
+                                 Command="{Binding NavigateToDashboardCommand}"
+                                 Foreground="White" Background="Transparent"
+                                 BorderThickness="0" Padding="15,8" Margin="0,2"
+                                 FontSize="14" Cursor="Hand"
+                                 Visibility="{Binding IsEditor, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <RadioButton.Resources>
+                            <Style TargetType="RadioButton">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="RadioButton">
+                                            <Border x:Name="Border" Background="Transparent"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    BorderThickness="0">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#2980b9"/>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#2c3e50"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </RadioButton.Resources>
+                    </RadioButton>
+
                     <RadioButton Content="📋 Proposal Review"
                                  IsChecked="{Binding IsOnProposalReview}"
                                  Command="{Binding NavigateToProposalReviewCommand}"
+                                 Foreground="White" Background="Transparent"
+                                 BorderThickness="0" Padding="15,8" Margin="0,2"
+                                 FontSize="14" Cursor="Hand"
+                                 Visibility="{Binding IsEditor, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <RadioButton.Resources>
+                            <Style TargetType="RadioButton">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="RadioButton">
+                                            <Border x:Name="Border" Background="Transparent"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    BorderThickness="0">
+                                                <ContentPresenter/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsChecked" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#2980b9"/>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#2c3e50"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </RadioButton.Resources>
+                    </RadioButton>
+
+                    <RadioButton Content="📖 Chapter Review"
+                                 IsChecked="{Binding IsOnChapterReview}"
+                                 Command="{Binding NavigateToChapterReviewCommand}"
                                  Foreground="White" Background="Transparent"
                                  BorderThickness="0" Padding="15,8" Margin="0,2"
                                  FontSize="14" Cursor="Hand"

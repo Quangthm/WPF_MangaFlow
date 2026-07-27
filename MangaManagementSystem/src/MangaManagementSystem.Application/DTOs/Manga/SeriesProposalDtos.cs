@@ -46,7 +46,9 @@ namespace MangaManagementSystem.Application.DTOs.Manga
         string? ProposalFileUrl,
         string? ProposalFileName,
         Guid? MarkupFileId,
-        string? MarkupFileUrl
+        string? MarkupFileUrl,
+        bool IsClaimedByCurrentEditor = false,
+        bool CanClaim = false
     );
 
     public record ProposalQueueFilterDto(
