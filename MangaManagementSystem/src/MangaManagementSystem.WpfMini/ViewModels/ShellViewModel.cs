@@ -64,11 +64,16 @@ public partial class ShellViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void NavigateToMangakaSeries()
+    private async Task NavigateToMangakaSeries()
     {
         ClearNavigationState();
         IsOnMangakaSeries = true;
-        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<MangakaSeriesListViewModel>();
+        var viewModel =
+        App.ServiceProvider
+           .GetRequiredService<MangakaSeriesListViewModel>();
+
+        CurrentContentViewModel = viewModel;
+        await viewModel.RefreshCommand.ExecuteAsync(null);
     }
 
     [RelayCommand]
