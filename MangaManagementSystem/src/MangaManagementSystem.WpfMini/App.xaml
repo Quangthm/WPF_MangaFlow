@@ -20,7 +20,12 @@
             <DataTemplate DataType="{x:Type vm:EditorProposalReviewViewModel}">
                 <views:EditorProposalReviewView/>
             </DataTemplate>
-
+            <DataTemplate DataType="{x:Type vm:MangakaSeriesListViewModel}">
+                <views:MangakaSeriesListView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:SeriesEditorViewModel}">
+                <views:SeriesEditorView/>
+            </DataTemplate>
             <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <converters:StatusToBrushConverter x:Key="StatusToBrushConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>

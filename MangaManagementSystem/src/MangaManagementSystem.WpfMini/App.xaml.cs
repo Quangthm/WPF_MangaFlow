@@ -38,12 +38,15 @@ public partial class App : Application
 
         services.AddSingleton<AuthApiClient>();
         services.AddSingleton<EditorApiClient>();
+        services.AddSingleton<MangakaSeriesApiClient>();
+        services.AddSingleton<FileUploadApiClient>();
 
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<LoginViewModel>();
         services.AddTransient<ShellViewModel>();
         services.AddTransient<EditorProposalReviewViewModel>();
-
+        services.AddTransient<MangakaSeriesListViewModel>();
+        services.AddTransient<SeriesEditorViewModel>();
         ServiceProvider = services.BuildServiceProvider();
 
         var mainWindow = new MainWindow();

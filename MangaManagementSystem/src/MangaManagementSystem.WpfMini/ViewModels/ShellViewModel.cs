@@ -13,9 +13,12 @@ public partial class ShellViewModel : ObservableObject
     private CurrentUserSession? _session;
 
     [ObservableProperty]
-    private ObservableObject? _currentEditorViewModel;
+    private ObservableObject? _currentContentViewModel;
 
     // Navigation state
+    [ObservableProperty]
+    private bool _isOnMangakaSeries;
+
     [ObservableProperty]
     private bool _isOnProposalReview;
 
@@ -23,6 +26,9 @@ public partial class ShellViewModel : ObservableObject
     private bool _isOnBoardPolls;
 
     // Role visibility flags
+    [ObservableProperty]
+    private bool _isMangaka;
+
     [ObservableProperty]
     private bool _isEditor;
 
@@ -37,37 +43,63 @@ public partial class ShellViewModel : ObservableObject
         // Set role flags
         if (Session is not null)
         {
+            IsMangaka = Session.IsMangaka;
             IsEditor = Session.IsEditor;
             IsBoardRole = Session.IsBoardRole;
         }
 
-        // Default to Proposal Review for editor
-        if (IsEditor)
+        // Default landing page after login by role.
+        if (IsMangaka)
+        {
+            NavigateToMangakaSeriesCommand.Execute(null);
+        }
+        else if (IsEditor)
         {
             NavigateToProposalReviewCommand.Execute(null);
         }
+        else if (IsBoardRole)
+        {
+            NavigateToBoardPollsCommand.Execute(null);
+        }
+    }
+
+    [RelayCommand]
+    private void NavigateToMangakaSeries()
+    {
+        ClearNavigationState();
+        IsOnMangakaSeries = true;
+        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<MangakaSeriesListViewModel>();
     }
 
     [RelayCommand]
     private void NavigateToProposalReview()
     {
+        ClearNavigationState();
         IsOnProposalReview = true;
-        IsOnBoardPolls = false;
-        CurrentEditorViewModel = App.ServiceProvider.GetRequiredService<EditorProposalReviewViewModel>();
+
+        CurrentContentViewModel =
+            App.ServiceProvider.GetRequiredService<EditorProposalReviewViewModel>();
     }
 
     [RelayCommand]
     private void NavigateToBoardPolls()
     {
-        IsOnProposalReview = false;
+        ClearNavigationState();
         IsOnBoardPolls = true;
-        // BoardPollListViewModel sẽ được tạo sau
-        CurrentEditorViewModel = null;
+
+        // Replace this with BoardPollListViewModel later when you implement board UI.
+        CurrentContentViewModel = null;
     }
 
     [RelayCommand]
     private void Logout()
     {
         _mainVm.LogoutCommand.Execute(null);
+    }
+    private void ClearNavigationState()
+    {
+        IsOnMangakaSeries = false;
+        IsOnProposalReview = false;
+        IsOnBoardPolls = false;
     }
 }

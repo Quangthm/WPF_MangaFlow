@@ -294,7 +294,6 @@ CREATE TABLE manga.Chapter (
 	chapter_number_label NVARCHAR(20) NOT NULL,
 	chapter_title NVARCHAR(200) NULL,
 	status_code NVARCHAR(50) NOT NULL CONSTRAINT df_chapter_status_code DEFAULT(N'DRAFT'),
-	chapter_file_id UNIQUEIDENTIFIER NULL,
 	planned_release_date DATE NULL,
 	released_at_utc DATETIME2(0) NULL,
 	created_at_utc DATETIME2(0) NOT NULL CONSTRAINT df_chapter_created_at_utc DEFAULT(SYSUTCDATETIME()),
@@ -322,12 +321,56 @@ CREATE TABLE manga.Chapter (
 		),
 	CONSTRAINT fk_chapter_series FOREIGN KEY (series_id) REFERENCES manga.Series(series_id),
 	CONSTRAINT fk_chapter_created_by FOREIGN KEY (created_by_user_id) REFERENCES auth.Users(user_id),
-	CONSTRAINT fk_chapter_file
-    FOREIGN KEY (chapter_file_id)
-    REFERENCES manga.FileResource(file_resource_id),
 	CONSTRAINT uq_chapter_series_chapter_number UNIQUE (
 		series_id,
 		chapter_number_label
+		)
+	);
+CREATE TABLE manga.ChapterPage (
+	chapter_page_id UNIQUEIDENTIFIER NOT NULL CONSTRAINT df_chapter_page_id DEFAULT NEWID() CONSTRAINT pk_chapter_page PRIMARY KEY,
+	chapter_id UNIQUEIDENTIFIER NOT NULL,
+	page_no INT NOT NULL,
+	page_notes NVARCHAR(MAX) NULL,
+	deleted_at_utc DATETIME2(0) NULL,
+	deleted_by_user_id UNIQUEIDENTIFIER NULL,
+	CONSTRAINT ck_chapter_page_page_no_positive CHECK (page_no > 0),
+	CONSTRAINT ck_chapter_page_deleted_pair CHECK (
+		(
+			deleted_at_utc IS NULL
+			AND deleted_by_user_id IS NULL
+			)
+		OR (
+			deleted_at_utc IS NOT NULL
+			AND deleted_by_user_id IS NOT NULL
+			)
+		),
+	CONSTRAINT fk_chapter_page_chapter FOREIGN KEY (chapter_id) REFERENCES manga.Chapter(chapter_id)
+	);
+
+CREATE INDEX ix_chapter_page_chapter_id ON manga.ChapterPage (chapter_id);
+
+CREATE UNIQUE INDEX ux_chapter_page_active_page_no ON manga.ChapterPage (
+	chapter_id,
+	page_no
+	)
+WHERE deleted_at_utc IS NULL;
+
+CREATE TABLE manga.ChapterPageVersion (
+	chapter_page_version_id UNIQUEIDENTIFIER NOT NULL CONSTRAINT df_chapter_page_version_id DEFAULT NEWID() CONSTRAINT pk_chapter_page_version PRIMARY KEY,
+	chapter_page_id UNIQUEIDENTIFIER NOT NULL,
+	version_no SMALLINT NOT NULL,
+	page_file_id UNIQUEIDENTIFIER NOT NULL,
+	version_note NVARCHAR(500) NULL,
+	is_current_version BIT NOT NULL CONSTRAINT df_chapter_page_version_is_current DEFAULT(0),
+	CONSTRAINT fk_chapter_page_version_page FOREIGN KEY (chapter_page_id) REFERENCES manga.ChapterPage(chapter_page_id),
+	CONSTRAINT fk_chapter_page_version_file FOREIGN KEY (page_file_id) REFERENCES manga.FileResource(file_resource_id),
+	CONSTRAINT uq_chapter_page_version_no UNIQUE (
+		chapter_page_id,
+		version_no
+		),
+	CONSTRAINT uq_chapter_page_version_id_page UNIQUE (
+		chapter_page_version_id,
+		chapter_page_id
 		)
 	);
 
