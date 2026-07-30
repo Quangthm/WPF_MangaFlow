@@ -32,6 +32,7 @@ public partial class MainWindowViewModel : ObservableObject
     public void SetSession(CurrentUserSession session)
     {
         _api.SetActorUserId(session.UserId);
+        _api.SetBearerToken(session.AccessToken);
         CurrentSession = session;
         IsLoggedIn = true;
         Title = $"Manga Management - {session.Username} ({session.RoleCode})";
@@ -42,6 +43,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void Logout()
     {
         _api.ClearActorUserId();
+        _api.ClearBearerToken();
         CurrentSession = null;
         IsLoggedIn = false;
         Title = "Manga Management System";

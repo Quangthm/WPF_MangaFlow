@@ -64,9 +64,11 @@ public partial class LoginViewModel : ObservableObject
 
             var session = new CurrentUserSession
             {
-                UserId = response.UserId,
-                Username = response.Username,
-                RoleCode = response.RoleCode
+                UserId = response.User.UserId.ToString(),
+                Username = response.User.Username,
+                RoleCode = MapRoleNameToCode(response.RoleName),
+                AccessToken = response.AccessToken,
+                TokenExpiresAtUtc = response.ExpiresAtUtc
             };
 
             MainVm.SetSession(session);
@@ -118,4 +120,18 @@ public partial class LoginViewModel : ObservableObject
         Password = "Password123!";
         await LoginAsync();
     }
+    private static string MapRoleNameToCode(string roleName)
+    {
+        return roleName switch
+        {
+            "Tantou Editor" => "EDITOR",
+            "Editorial Board Chief" => "BOARD_CHIEF",
+            "Editorial Board Member" => "BOARD_MEMBER",
+            "Mangaka" => "MANGAKA",
+            "Assistant" => "ASSISTANT",
+            "Admin" => "ADMIN",
+            _ => roleName.Replace(" ", "_").ToUpperInvariant()
+        };
+    }
+
 }
