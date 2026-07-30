@@ -1,132 +1,65 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using MangaManagementSystem.WpfMini.Models;
+using MangaManagementSystem.WpfMini.ViewModels.Workspaces;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MangaManagementSystem.WpfMini.ViewModels;
 
 public partial class ShellViewModel : ObservableObject
 {
-    private readonly MainWindowViewModel _mainVm;
+    private readonly MainWindowViewModel _mainViewModel;
+    private readonly IServiceProvider _serviceProvider;
 
     [ObservableProperty]
     private CurrentUserSession? _session;
 
     [ObservableProperty]
-    private ObservableObject? _currentContentViewModel;
+    private ObservableObject? _currentWorkspaceViewModel;
 
-    // Navigation state
-    [ObservableProperty]
-    private bool _isOnDashboard;
-
-    [ObservableProperty]
-    private bool _isOnMangakaSeries;
-
-    [ObservableProperty]
-    private bool _isOnProposalReview;
-
-    [ObservableProperty]
-    private bool _isOnChapterReview;
-
-    [ObservableProperty]
-    private bool _isOnBoardPolls;
-
-    // Role visibility flags
-    [ObservableProperty]
-    private bool _isMangaka;
-
-    [ObservableProperty]
-    private bool _isEditor;
-
-    [ObservableProperty]
-    private bool _isBoardRole;
-
-    public ShellViewModel(MainWindowViewModel mainVm)
+    public ShellViewModel(
+        MainWindowViewModel mainViewModel,
+        IServiceProvider serviceProvider)
     {
-        _mainVm = mainVm;
-        Session = mainVm.CurrentSession;
+        _mainViewModel = mainViewModel;
+        _serviceProvider = serviceProvider;
 
-        // Set role flags
-        if (Session is not null)
+        Session = mainViewModel.CurrentSession;
+        CurrentWorkspaceViewModel = ResolveWorkspace(Session);
+    }
+
+    private ObservableObject? ResolveWorkspace(
+        CurrentUserSession? session)
+    {
+        if (session is null)
         {
-            IsMangaka = Session.IsMangaka;
-            IsEditor = Session.IsEditor;
-            IsBoardRole = Session.IsBoardRole;
+            return null;
         }
 
-        // Default landing page after login by role.
-        if (IsMangaka)
+        if (session.IsMangaka)
         {
-            NavigateToMangakaSeriesCommand.Execute(null);
+            return _serviceProvider
+                .GetRequiredService<MangakaWorkspaceViewModel>();
         }
-        else if (IsEditor)
+
+        if (session.IsEditor)
         {
-            NavigateToDashboardCommand.Execute(null);
+            return _serviceProvider
+                .GetRequiredService<EditorWorkspaceViewModel>();
         }
-        else if (IsBoardRole)
+
+        if (session.IsBoardRole)
         {
-            NavigateToBoardPollsCommand.Execute(null);
+            return _serviceProvider
+                .GetRequiredService<BoardWorkspaceViewModel>();
         }
-    }
 
-    [RelayCommand]
-    private void NavigateToDashboard()
-    {
-        ClearNavigationState();
-        IsOnDashboard = true;
-        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<EditorDashboardViewModel>();
-    }
-
-    [RelayCommand]
-    private async Task NavigateToMangakaSeries()
-    {
-        ClearNavigationState();
-        IsOnMangakaSeries = true;
-        var viewModel =
-        App.ServiceProvider
-           .GetRequiredService<MangakaSeriesListViewModel>();
-
-        CurrentContentViewModel = viewModel;
-        await viewModel.RefreshCommand.ExecuteAsync(null);
-    }
-
-    [RelayCommand]
-    private void NavigateToProposalReview()
-    {
-        ClearNavigationState();
-        IsOnProposalReview = true;
-        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<EditorProposalReviewViewModel>();
-    }
-
-    [RelayCommand]
-    private void NavigateToChapterReview()
-    {
-        ClearNavigationState();
-        IsOnChapterReview = true;
-        CurrentContentViewModel = App.ServiceProvider.GetRequiredService<EditorChapterReviewViewModel>();
-    }
-
-    [RelayCommand]
-    private void NavigateToBoardPolls()
-    {
-        ClearNavigationState();
-        IsOnBoardPolls = true;
-        // Replace this with BoardPollListViewModel later when you implement board UI.
-        CurrentContentViewModel = null;
+        return null;
     }
 
     [RelayCommand]
     private void Logout()
     {
-        _mainVm.LogoutCommand.Execute(null);
-    }
-
-    private void ClearNavigationState()
-    {
-        IsOnDashboard = false;
-        IsOnMangakaSeries = false;
-        IsOnProposalReview = false;
-        IsOnChapterReview = false;
-        IsOnBoardPolls = false;
+        _mainViewModel.LogoutCommand.Execute(null);
     }
 }

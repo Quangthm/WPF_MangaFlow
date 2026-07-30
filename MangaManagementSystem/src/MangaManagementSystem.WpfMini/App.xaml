@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:MangaManagementSystem.WpfMini.Converters"
              xmlns:vm="clr-namespace:MangaManagementSystem.WpfMini.ViewModels"
-             xmlns:views="clr-namespace:MangaManagementSystem.WpfMini.Views">
+             xmlns:views="clr-namespace:MangaManagementSystem.WpfMini.Views"
+             xmlns:workspaceVm="clr-namespace:MangaManagementSystem.WpfMini.ViewModels.Workspaces"
+            xmlns:workspaceViews="clr-namespace:MangaManagementSystem.WpfMini.Views.Workspaces">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -16,6 +18,15 @@
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:ShellViewModel}">
                 <views:ShellView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type workspaceVm:MangakaWorkspaceViewModel}">
+                <workspaceViews:MangakaWorkspaceView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type workspaceVm:EditorWorkspaceViewModel}">
+                <workspaceViews:EditorWorkspaceView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type workspaceVm:BoardWorkspaceViewModel}">
+                <workspaceViews:BoardWorkspaceView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:EditorDashboardViewModel}">
                 <views:EditorDashboardView/>
