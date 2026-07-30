@@ -51,9 +51,14 @@ public partial class ChapterEditorViewModel : ObservableObject
     public bool HasNoLatestReview => LatestReview is null;
     public bool CanOpenMarkupUrl => TryGetMarkupUri(out _);
 
-    public ChapterEditorViewModel(IMangakaChapterApiClient chapterApiClient)
+    public ChapterPageWorkspaceViewModel PageWorkspace { get; }
+
+    public ChapterEditorViewModel(
+        IMangakaChapterApiClient chapterApiClient,
+        ChapterPageWorkspaceViewModel pageWorkspace)
     {
         _chapterApiClient = chapterApiClient;
+        PageWorkspace = pageWorkspace;
     }
 
     public void InitializeCreate(Guid seriesId, string seriesTitle)
@@ -77,15 +82,20 @@ public partial class ChapterEditorViewModel : ObservableObject
         LatestReview = null;
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
+        PageWorkspace.ResetForUnsavedChapter();
         NotifyStateProperties();
     }
 
-    public void InitializeExisting(MangakaChapterListItemDto chapter)
+    public async Task InitializeExistingAsync(MangakaChapterListItemDto chapter)
     {
         ArgumentNullException.ThrowIfNull(chapter);
         ApplyChapter(chapter);
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
+        await PageWorkspace.InitializeAsync(
+            chapter.ChapterId,
+            chapter.StatusCode,
+            GetChapterDisplayName(chapter));
     }
 
     [RelayCommand]
@@ -107,6 +117,10 @@ public partial class ChapterEditorViewModel : ObservableObject
                 result = await _chapterApiClient.CreateChapterDraftAsync(
                     new CreateChapterDraftRequest(SeriesId, label, title));
                 ApplyChapter(result);
+                await PageWorkspace.InitializeAsync(
+                    result.ChapterId,
+                    result.StatusCode,
+                    GetChapterDisplayName(result));
                 SuccessMessage = "Chapter draft created successfully.";
             }
             else
@@ -257,6 +271,7 @@ public partial class ChapterEditorViewModel : ObservableObject
         CreatedAtUtc = chapter.CreatedAtUtc;
         UpdatedAtUtc = chapter.UpdatedAtUtc;
         LatestReview = chapter.LatestReview;
+        PageWorkspace.UpdateChapterStatus(chapter.StatusCode);
         NotifyStateProperties();
     }
 
@@ -285,6 +300,11 @@ public partial class ChapterEditorViewModel : ObservableObject
 
     private bool IsStatus(string status) =>
         string.Equals(StatusCode, status, StringComparison.OrdinalIgnoreCase);
+
+    private static string GetChapterDisplayName(MangakaChapterListItemDto chapter) =>
+        string.IsNullOrWhiteSpace(chapter.ChapterTitle)
+            ? chapter.ChapterNumberLabel
+            : $"{chapter.ChapterNumberLabel} — {chapter.ChapterTitle}";
 
     private bool TryGetMarkupUri(out Uri uri)
     {

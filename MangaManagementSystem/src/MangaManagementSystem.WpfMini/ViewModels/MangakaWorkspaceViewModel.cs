@@ -233,7 +233,7 @@ public partial class MangakaWorkspaceViewModel : ObservableObject
             $"{nameof(ChapterEditorViewModel)} (create)");
     }
 
-    private void OpenExistingChapterEditor(
+    private async void OpenExistingChapterEditor(
         MangakaChapterListItemDto chapter)
     {
         SetActiveSection(isSeries: false);
@@ -248,13 +248,24 @@ public partial class MangakaWorkspaceViewModel : ObservableObject
         viewModel.BackRequested +=
             ReturnToChapterList;
 
-        viewModel.InitializeExisting(chapter);
-
         CurrentContentViewModel = viewModel;
 
-        Debug.WriteLine(
-            $"Mangaka workspace content: " +
-            $"{nameof(ChapterEditorViewModel)} (existing)");
+        try
+        {
+            await viewModel.InitializeExistingAsync(chapter);
+            Debug.WriteLine(
+                $"Mangaka workspace content: " +
+                $"{nameof(ChapterEditorViewModel)} (existing)");
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(
+                $"The chapter editor could not be opened: {ex.Message}",
+                "Open Chapter",
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
+            await ShowChapterListAsync();
+        }
     }
 
     // =========================================================

@@ -89,6 +89,39 @@ public class ApiClientBase
         return await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions);
     }
 
+    public async Task<TResponse?> PostFormAsync<TResponse>(
+        string url,
+        MultipartFormDataContent form,
+        CancellationToken cancellationToken)
+    {
+        var response = await _httpClient.PostAsync(url, form, cancellationToken);
+        await EnsureSuccessAsync(response);
+        return await response.Content.ReadFromJsonAsync<TResponse>(
+            JsonOptions,
+            cancellationToken);
+    }
+
+    public async Task PutAsync<TRequest>(
+        string url,
+        TRequest body,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.PutAsJsonAsync(
+            url,
+            body,
+            JsonOptions,
+            cancellationToken);
+        await EnsureSuccessAsync(response);
+    }
+
+    public async Task DeleteAsync(
+        string url,
+        CancellationToken cancellationToken = default)
+    {
+        var response = await _httpClient.DeleteAsync(url, cancellationToken);
+        await EnsureSuccessAsync(response);
+    }
+
     public async Task<TResponse?> PutFormAsync<TResponse>(
     string url,
     MultipartFormDataContent form)
@@ -121,15 +154,19 @@ public class ApiClientBase
                 {
                     detail = msgProp.GetString();
                 }
+                else if (doc.RootElement.TryGetProperty("detail", out var detailProp))
+                {
+                    detail = detailProp.GetString();
+                }
             }
             catch
             {
                 // not JSON
             }
 
-            var msg = $"HTTP {(int)response.StatusCode} ({response.ReasonPhrase})";
-            if (!string.IsNullOrEmpty(detail))
-                msg += $": {detail}";
+            var msg = !string.IsNullOrWhiteSpace(detail)
+                ? detail
+                : $"The request failed with HTTP {(int)response.StatusCode}.";
 
             throw new HttpRequestException(msg, null, response.StatusCode);
         }

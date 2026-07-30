@@ -168,19 +168,11 @@
                     </Grid>
                 </GroupBox>
 
-                <Border Background="#f4f6f7"
-                        BorderBrush="#dcdde1"
-                        BorderThickness="1"
-                        CornerRadius="5"
-                        Padding="14">
-                    <StackPanel>
-                        <TextBlock Text="Phase 2" FontWeight="SemiBold"/>
-                        <TextBlock Text="Page and version management will be added in Phase 2."
-                                   Margin="0,4,0,0"
-                                   Foreground="#7f8c8d"
-                                   TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+                <GroupBox Header="Pages and Versions"
+                          Padding="14"
+                          MinHeight="560">
+                    <ContentControl Content="{Binding PageWorkspace}"/>
+                </GroupBox>
             </StackPanel>
         </ScrollViewer>
 

@@ -45,6 +45,7 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<IMangakaSeriesApiClient, MangakaSeriesApiClient>();
         services.AddSingleton<IMangakaChapterApiClient, MangakaChapterApiClient>();
+        services.AddSingleton<IMangakaPageApiClient, MangakaPageApiClient>();
         services.AddSingleton<IReferenceDataApiClient, ReferenceDataApiClient>();
 
         services.AddSingleton<MainWindowViewModel>();
@@ -60,6 +61,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<SeriesEditorViewModel>();
         services.AddTransient<ChapterListViewModel>();
         services.AddTransient<ChapterEditorViewModel>();
+        services.AddTransient<ChapterPageWorkspaceViewModel>();
 
         ServiceProvider = services.BuildServiceProvider();
 
