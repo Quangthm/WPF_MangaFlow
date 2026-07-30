@@ -33,11 +33,13 @@
             <Grid Margin="0,0,0,20" Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=false}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="15"/>
+                    <ColumnDefinition Width="10"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="15"/>
+                    <ColumnDefinition Width="10"/>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="15"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="10"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
@@ -71,8 +73,18 @@
                     </StackPanel>
                 </Border>
 
-                <!-- KPI: Serialized Series -->
+                <!-- KPI: Pending Annotations -->
                 <Border Grid.Column="6" Background="White" CornerRadius="8" Padding="16"
+                        BorderBrush="#e0e0e0" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="{Binding PendingAnnotationCount}" FontSize="36"
+                                   FontWeight="Bold" Foreground="#e74c3c"/>
+                        <TextBlock Text="Open Annotations" FontSize="13" Foreground="#7f8c8d" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- KPI: Serialized Series -->
+                <Border Grid.Column="8" Background="White" CornerRadius="8" Padding="16"
                         BorderBrush="#e0e0e0" BorderThickness="1">
                     <StackPanel>
                         <TextBlock Text="{Binding SerializedSeriesCount}" FontSize="36"
@@ -211,6 +223,64 @@
                             BorderBrush="#eee" BorderThickness="1"
                             Visibility="{Binding HasNoMyClaimedProposals, Converter={StaticResource BoolToVisibilityConverter}}">
                         <TextBlock Text="You haven't claimed any proposals yet."
+                                   Foreground="#888" FontSize="13" TextAlignment="Center"/>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- ════════════════════════════════════════════════ -->
+            <!-- Section C: Recent Series Activity                -->
+            <!-- ════════════════════════════════════════════════ -->
+            <Border Background="White" CornerRadius="8" Padding="16" Margin="0,16,0,0"
+                    BorderBrush="#e0e0e0" BorderThickness="1"
+                    Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=false}">
+                <StackPanel>
+                    <TextBlock Text="Recent Series Activity" FontSize="16" FontWeight="Bold"
+                               Foreground="#2c3e50" Margin="0,0,0,12"/>
+
+                    <ItemsControl ItemsSource="{Binding RecentSeriesActivity}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#f9f9f9" CornerRadius="6" Padding="12"
+                                        BorderBrush="#eee" BorderThickness="1" Margin="0,0,0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding SeriesTitle}" FontWeight="Bold"
+                                                           FontSize="14" Foreground="#2c3e50"/>
+                                                <TextBlock Text="{Binding SeriesSlug, StringFormat=' /{0}'}"
+                                                           FontSize="12" Foreground="#7f8c8d" VerticalAlignment="Center"
+                                                           Margin="6,0,0,0"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <Border Background="{Binding StatusCode, Converter={StaticResource StatusToBrushConverter}}"
+                                                        CornerRadius="4" Padding="6,2">
+                                                    <TextBlock Text="{Binding StatusCode}" Foreground="White"
+                                                               FontSize="10" FontWeight="Bold"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding LatestChapterLabel, StringFormat=' · {0}'}"
+                                                           FontSize="11" Foreground="#95a5a6" Margin="6,0,0,0"
+                                                           VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding LastActivityDisplay, StringFormat=' · {0}'}"
+                                                           FontSize="11" Foreground="#95a5a6" Margin="4,0,0,0"
+                                                           VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Empty state -->
+                    <Border Background="#f9f9f9" CornerRadius="6" Padding="16"
+                            BorderBrush="#eee" BorderThickness="1"
+                            Visibility="{Binding HasNoSeriesActivity, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="No recent series activity."
                                    Foreground="#888" FontSize="13" TextAlignment="Center"/>
                     </Border>
                 </StackPanel>

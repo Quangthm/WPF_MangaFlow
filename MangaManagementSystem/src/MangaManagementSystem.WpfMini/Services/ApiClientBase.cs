@@ -117,6 +117,10 @@ public class ApiClientBase
                 {
                     detail = errProp.GetString();
                 }
+                else if (doc.RootElement.TryGetProperty("message", out var msgProp))
+                {
+                    detail = msgProp.GetString();
+                }
             }
             catch
             {

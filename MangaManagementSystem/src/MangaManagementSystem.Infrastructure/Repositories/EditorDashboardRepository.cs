@@ -65,14 +65,12 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                 .Take(proposalQueueTake)
                 .ToListAsync(ct);
 
-            // Recent series activity: most recently updated/created series first, scoped to
-            // series the current editor contributes to, with chapters eagerly loaded so the
-            // handler can derive the latest chapter label.
+            // Recent series activity: most recently updated/created series first,
+            // across all series so editors can see system-wide activity.
+            // Series contributed to by the current editor are still included.
             List<Series> recentSeries = await _dbContext.Series
                 .AsNoTracking()
                 .Include(s => s.Chapters)
-                .Where(s => _dbContext.ActiveSeriesContributors
-                    .Any(asc => asc.SeriesId == s.SeriesId && asc.UserId == actorUserId))
                 .OrderByDescending(s => s.UpdatedAtUtc ?? s.CreatedAtUtc)
                 .Take(recentSeriesTake)
                 .ToListAsync(ct);

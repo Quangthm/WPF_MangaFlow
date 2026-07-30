@@ -7,7 +7,8 @@ using MangaManagementSystem.WpfMini.Services;
 namespace MangaManagementSystem.WpfMini.ViewModels;
 
 /// <summary>
-/// ViewModel for the Editor Dashboard (KPIs + unclaimed proposals + my claimed proposals).
+/// ViewModel for the Editor Dashboard (KPIs + proposal queue + series activity).
+/// Uses real API via EditorApiClient — no mock data fallback.
 /// </summary>
 public partial class EditorDashboardViewModel : ObservableObject
 {
@@ -25,17 +26,26 @@ public partial class EditorDashboardViewModel : ObservableObject
     private int _chaptersUnderReviewCount;
 
     [ObservableProperty]
+    private int _pendingAnnotationCount;
+
+    [ObservableProperty]
     private int _serializedSeriesCount;
 
-    // ── Section A: Unclaimed Proposals ──
+    // ── Proposal Queue (from dashboard DTO) ──
+
+    [ObservableProperty]
+    private ObservableCollection<EditorDashboardProposalDto> _proposalQueue = [];
+
+    [ObservableProperty]
+    private ObservableCollection<EditorDashboardSeriesActivityDto> _recentSeriesActivity = [];
+
+    // ── Claimable/Claimed proposals (from proposals endpoint) ──
 
     [ObservableProperty]
     private ObservableCollection<ProposalQueueItem> _unclaimedProposals = [];
 
     [ObservableProperty]
     private ProposalQueueItem? _selectedUnclaimedProposal;
-
-    // ── Section B: My Claimed Proposals ──
 
     [ObservableProperty]
     private ObservableCollection<ProposalQueueItem> _myClaimedProposals = [];
@@ -60,14 +70,17 @@ public partial class EditorDashboardViewModel : ObservableObject
     [ObservableProperty]
     private bool _isClaiming;
 
-    // ── Navigation (event to ShellViewModel) ──
-
     // ── Computed Properties ──
 
     public bool HasUnclaimedProposals => UnclaimedProposals.Count > 0;
     public bool HasNoUnclaimedProposals => UnclaimedProposals.Count == 0;
     public bool HasMyClaimedProposals => MyClaimedProposals.Count > 0;
     public bool HasNoMyClaimedProposals => MyClaimedProposals.Count == 0;
+
+    public bool HasProposalQueue => ProposalQueue.Count > 0;
+    public bool HasNoProposalQueue => ProposalQueue.Count == 0;
+    public bool HasSeriesActivity => RecentSeriesActivity.Count > 0;
+    public bool HasNoSeriesActivity => RecentSeriesActivity.Count == 0;
 
     /// <summary>
     /// Raised when the user wants to navigate to the Proposal Review tab for a specific proposal.
@@ -91,16 +104,30 @@ public partial class EditorDashboardViewModel : ObservableObject
 
         try
         {
+            // 1. Load dashboard KPIs + proposal queue + series activity
             var dashboard = await _editorApi.GetDashboardAsync();
             if (dashboard is not null)
             {
                 PendingProposalCount = dashboard.PendingProposalCount;
                 CompletedProposalCount = dashboard.CompletedProposalCount;
                 ChaptersUnderReviewCount = dashboard.ChaptersUnderReviewCount;
+                PendingAnnotationCount = dashboard.PendingAnnotationCount;
                 SerializedSeriesCount = dashboard.SerializedSeriesCount;
+
+                ProposalQueue.Clear();
+                foreach (var item in dashboard.ProposalReviewQueue)
+                {
+                    ProposalQueue.Add(item);
+                }
+
+                RecentSeriesActivity.Clear();
+                foreach (var item in dashboard.RecentSeriesActivity)
+                {
+                    RecentSeriesActivity.Add(item);
+                }
             }
 
-            // Load unclaimed proposals (all queue items, client-filter to CanClaim=true)
+            // 2. Load proposal queue for claim/unclaim UI
             var allProposals = await _editorApi.GetProposalQueueAsync();
             if (allProposals is not null)
             {
@@ -118,21 +145,23 @@ public partial class EditorDashboardViewModel : ObservableObject
                         UnclaimedProposals.Add(item);
                     }
                 }
-
-                OnPropertyChanged(nameof(HasUnclaimedProposals));
-                OnPropertyChanged(nameof(HasNoUnclaimedProposals));
-                OnPropertyChanged(nameof(HasMyClaimedProposals));
-                OnPropertyChanged(nameof(HasNoMyClaimedProposals));
             }
         }
         catch (Exception ex)
         {
             ErrorMessage = $"Failed to load dashboard: {ex.Message}";
-            LoadMockData();
         }
         finally
         {
             IsLoading = false;
+            OnPropertyChanged(nameof(HasUnclaimedProposals));
+            OnPropertyChanged(nameof(HasNoUnclaimedProposals));
+            OnPropertyChanged(nameof(HasMyClaimedProposals));
+            OnPropertyChanged(nameof(HasNoMyClaimedProposals));
+            OnPropertyChanged(nameof(HasProposalQueue));
+            OnPropertyChanged(nameof(HasNoProposalQueue));
+            OnPropertyChanged(nameof(HasSeriesActivity));
+            OnPropertyChanged(nameof(HasNoSeriesActivity));
         }
     }
 
@@ -179,71 +208,5 @@ public partial class EditorDashboardViewModel : ObservableObject
     {
         if (item is null) return;
         NavigateToProposalReview?.Invoke(item);
-    }
-
-    // ── Mock Data ──
-
-    private void LoadMockData()
-    {
-        PendingProposalCount = 12;
-        CompletedProposalCount = 8;
-        ChaptersUnderReviewCount = 5;
-        SerializedSeriesCount = 3;
-
-        UnclaimedProposals.Clear();
-        MyClaimedProposals.Clear();
-
-        UnclaimedProposals.Add(new ProposalQueueItem
-        {
-            SeriesProposalId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "Solo Leveling",
-            SeriesSlug = "solo-leveling",
-            ProposalVersionNo = 2,
-            ProposalTitle = "Season 2 Proposal",
-            SynopsisSnapshot = "The story follows Sung Jin-Woo...",
-            StatusCode = "UNDER_EDITORIAL_REVIEW",
-            SubmitterDisplayName = "TestMangaka1",
-            SubmittedAtUtc = DateTime.UtcNow.AddDays(-2),
-            CanClaim = true,
-            IsClaimedByCurrentEditor = false
-        });
-
-        UnclaimedProposals.Add(new ProposalQueueItem
-        {
-            SeriesProposalId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "Tower of God",
-            SeriesSlug = "tower-of-god",
-            ProposalVersionNo = 1,
-            ProposalTitle = "Initial Proposal",
-            SynopsisSnapshot = "A boy named Bam climbs a mysterious tower...",
-            StatusCode = "UNDER_EDITORIAL_REVIEW",
-            SubmitterDisplayName = "TestMangaka2",
-            SubmittedAtUtc = DateTime.UtcNow.AddDays(-5),
-            CanClaim = true,
-            IsClaimedByCurrentEditor = false
-        });
-
-        MyClaimedProposals.Add(new ProposalQueueItem
-        {
-            SeriesProposalId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "The Beginning After The End",
-            SeriesSlug = "tmate",
-            ProposalVersionNo = 1,
-            ProposalTitle = "Season 1 Proposal",
-            SynopsisSnapshot = "King Grey dies and is reincarnated...",
-            StatusCode = "UNDER_EDITORIAL_REVIEW",
-            SubmitterDisplayName = "TestMangaka3",
-            SubmittedAtUtc = DateTime.UtcNow.AddDays(-7),
-            CanClaim = false,
-            IsClaimedByCurrentEditor = true
-        });
-
-        OnPropertyChanged(nameof(HasUnclaimedProposals));
-        OnPropertyChanged(nameof(HasNoUnclaimedProposals));
-        OnPropertyChanged(nameof(HasMyClaimedProposals));
-        OnPropertyChanged(nameof(HasNoMyClaimedProposals));
     }
 }
