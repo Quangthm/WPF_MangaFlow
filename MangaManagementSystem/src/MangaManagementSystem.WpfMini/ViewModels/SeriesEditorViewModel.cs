@@ -1,5 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MangaManagementSystem.Application.Common;
 using MangaManagementSystem.Application.DTOs.Manga;
 using MangaManagementSystem.Domain.Entities;
 using MangaManagementSystem.WpfMini.Interfaces;
@@ -34,7 +35,7 @@ public partial class SeriesEditorViewModel : ObservableObject
     private string _title = string.Empty;
 
     [ObservableProperty]
-    private string _slug = string.Empty;
+    private string _slugPreview = string.Empty;
 
     [ObservableProperty]
     private string _synopsis = string.Empty;
@@ -124,7 +125,7 @@ public partial class SeriesEditorViewModel : ObservableObject
             StatusCode = "PROPOSAL_DRAFT";
 
             Title = string.Empty;
-            Slug = string.Empty;
+            SlugPreview = string.Empty;
             Synopsis = string.Empty;
 
             ContentLanguageCode = "ja";
@@ -186,7 +187,7 @@ public partial class SeriesEditorViewModel : ObservableObject
         StatusCode = series.StatusCode;
 
         Title = series.Title;
-        Slug = series.Slug;
+        SlugPreview = series.Slug;
         Synopsis = series.Synopsis;
 
         ContentLanguageCode =
@@ -355,8 +356,6 @@ public partial class SeriesEditorViewModel : ObservableObject
                         tagIds: tagIds,
                         contentLanguageCode:
                             ContentLanguageCode,
-                        slug:
-                            NullIfWhiteSpace(Slug),
                         publicationFrequencyCode:
                             PublicationFrequencyCode,
                         coverFilePath:
@@ -385,8 +384,6 @@ public partial class SeriesEditorViewModel : ObservableObject
                     tagIds: tagIds,
                     contentLanguageCode:
                         ContentLanguageCode,
-                    slug:
-                        NullIfWhiteSpace(Slug),
                     publicationFrequencyCode:
                         PublicationFrequencyCode,
                     coverFilePath:
@@ -579,6 +576,19 @@ public partial class SeriesEditorViewModel : ObservableObject
         return string.IsNullOrWhiteSpace(value)
             ? null
             : value.Trim();
+    }
+    partial void OnTitleChanged(string value)
+    {
+        SlugPreview = GenerateSlugPreview(value);
+    }
+    private static string GenerateSlugPreview(string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return string.Empty;
+        }
+
+        return SlugGenerator.FromTitle(title);
     }
 }
 

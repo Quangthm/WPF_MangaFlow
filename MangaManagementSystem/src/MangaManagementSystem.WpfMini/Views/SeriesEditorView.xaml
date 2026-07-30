@@ -130,19 +130,35 @@
 
 
                         <TextBlock Grid.Row="1"
-                                   Text="Slug"
-                                   Margin="0,8"
-                                   VerticalAlignment="Center"/>
+                            Text="Slug Preview"
+                            Margin="0,8"
+                            VerticalAlignment="Center"/>
 
-                        <TextBox Grid.Row="1"
-                                 Grid.Column="1"
-                                 Text="{Binding Slug,
-                                 UpdateSourceTrigger=PropertyChanged}"
-                                 IsEnabled="{Binding CanEditDraft}"
-                                 MaxLength="220"
-                                 Padding="7"
-                                 Margin="0,4"
-                                 ToolTip="Leave blank during creation to let the backend generate it from the title."/>
+                        <Grid Grid.Row="1"
+                            Grid.Column="1"
+                            Margin="0,4">
+
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+
+                            <TextBox Grid.Row="0"
+                                Text="{Binding SlugPreview}"
+                                IsReadOnly="True"
+                                IsTabStop="False"
+                                MaxLength="220"
+                                Padding="7"
+                                Background="#f3f4f6"
+                                Foreground="#555555"/>
+
+                            <TextBlock Grid.Row="1"
+               Text="Generated automatically from the title."
+               Margin="2,4,0,0"
+               Foreground="#7f8c8d"
+               FontSize="11"/>
+
+                        </Grid>
 
 
                         <TextBlock Grid.Row="2"

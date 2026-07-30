@@ -15,12 +15,44 @@ public sealed class MangakaSeriesApiClient : IMangakaSeriesApiClient
         _apiClient = apiClient;
     }
 
-    public Task<SeriesDraftCancelledDto> CancelDraftAsync(Guid seriesId, string? reason)
+    public async Task<SeriesDraftCancelledDto> CancelDraftAsync(Guid seriesId, string? reason)
     {
-        throw new NotImplementedException();
+        if (seriesId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "A valid series must be selected to cancel.",
+                nameof(seriesId));
+        }
+
+        var normalizedReason =
+            string.IsNullOrWhiteSpace(reason)
+                ? null
+                : reason.Trim();
+
+        if (normalizedReason?.Length > 500)
+        {
+            throw new ArgumentException(
+                "The cancellation reason must be 500 characters or fewer.",
+                nameof(reason));
+        }
+
+        var request = new
+        {
+            Reason = normalizedReason
+        };
+
+        var result =
+            await _apiClient
+                .PostAsync<object, SeriesDraftCancelledDto>(
+                    $"/api/mangaka/series/{seriesId}/draft-cancellations",
+                    request);
+
+        return result
+            ?? throw new InvalidOperationException(
+                "The API returned an empty cancel-series response.");
     }
 
-    public async Task<SeriesDraftCreatedDto> CreateDraftAsync(string title, string synopsis, IReadOnlyCollection<Guid> genreIds, IReadOnlyCollection<Guid> tagIds, string contentLanguageCode, string? slug, string? publicationFrequencyCode, string? coverFilePath)
+    public async Task<SeriesDraftCreatedDto> CreateDraftAsync(string title, string synopsis, IReadOnlyCollection<Guid> genreIds, IReadOnlyCollection<Guid> tagIds, string contentLanguageCode, string? publicationFrequencyCode, string? coverFilePath)
     {
         using var form = CreateSeriesForm(
            title,
@@ -28,7 +60,6 @@ public sealed class MangakaSeriesApiClient : IMangakaSeriesApiClient
            genreIds,
            tagIds,
            contentLanguageCode,
-           slug,
            publicationFrequencyCode,
            coverFilePath);
 
@@ -79,7 +110,7 @@ public sealed class MangakaSeriesApiClient : IMangakaSeriesApiClient
                 "The API returned an empty proposal-submission response.");
     }
 
-    public async Task<SeriesDraftUpdatedDto> UpdateDraftAsync(Guid seriesId, string title, string synopsis, IReadOnlyCollection<Guid> genreIds, IReadOnlyCollection<Guid> tagIds, string contentLanguageCode, string? slug, string? publicationFrequencyCode, string? coverFilePath)
+    public async Task<SeriesDraftUpdatedDto> UpdateDraftAsync(Guid seriesId, string title, string synopsis, IReadOnlyCollection<Guid> genreIds, IReadOnlyCollection<Guid> tagIds, string contentLanguageCode, string? publicationFrequencyCode, string? coverFilePath)
     {
         using var form = CreateSeriesForm(
            title,
@@ -87,7 +118,6 @@ public sealed class MangakaSeriesApiClient : IMangakaSeriesApiClient
            genreIds,
            tagIds,
            contentLanguageCode,
-           slug,
            publicationFrequencyCode,
            coverFilePath);
 
@@ -106,7 +136,6 @@ public sealed class MangakaSeriesApiClient : IMangakaSeriesApiClient
        IReadOnlyCollection<Guid> genreIds,
        IReadOnlyCollection<Guid> tagIds,
        string contentLanguageCode,
-       string? slug,
        string? publicationFrequencyCode,
        string? coverFilePath)
     {
@@ -116,12 +145,6 @@ public sealed class MangakaSeriesApiClient : IMangakaSeriesApiClient
         form.Add(new StringContent(synopsis), "Synopsis");
         form.Add(new StringContent(contentLanguageCode), "ContentLanguageCode");
 
-        if (!string.IsNullOrWhiteSpace(slug))
-        {
-            form.Add(
-                new StringContent(slug.Trim()),
-                "Slug");
-        }
 
         if (!string.IsNullOrWhiteSpace(publicationFrequencyCode))
         {

@@ -18,7 +18,6 @@ namespace MangaManagementSystem.WpfMini.Interfaces
             IReadOnlyCollection<Guid> genreIds,
             IReadOnlyCollection<Guid> tagIds,
             string contentLanguageCode,
-            string? slug,
             string? publicationFrequencyCode,
             string? coverFilePath);
 
@@ -29,7 +28,6 @@ namespace MangaManagementSystem.WpfMini.Interfaces
             IReadOnlyCollection<Guid> genreIds,
             IReadOnlyCollection<Guid> tagIds,
             string contentLanguageCode,
-            string? slug,
             string? publicationFrequencyCode,
             string? coverFilePath);
 
