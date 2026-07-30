@@ -17,7 +17,8 @@ public partial class LoginView : UserControl
         {
             vm.PropertyChanged += (_, args) =>
             {
-                if (args.PropertyName == nameof(vm.Password))
+                if (args.PropertyName == nameof(vm.Password)
+                    && PasswordBox.Password != vm.Password)
                 {
                     PasswordBox.Password = vm.Password;
                 }
