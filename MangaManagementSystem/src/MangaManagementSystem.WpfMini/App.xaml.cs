@@ -1,14 +1,16 @@
-﻿using System.Net.Http;
-using System.Windows;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using MangaManagementSystem.WpfMini.Services;
+﻿using MangaManagementSystem.WpfMini.Services;
+using MangaManagementSystem.WpfMini.Services.Mangaka.ApiClient;
+using MangaManagementSystem.WpfMini.Services.Mangaka.Contracts;
 using MangaManagementSystem.WpfMini.ViewModels;
 using MangaManagementSystem.WpfMini.Views;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using System.Net.Http;
+using System.Windows;
 
 namespace MangaManagementSystem.WpfMini;
 
-public partial class App : Application
+public partial class App : System.Windows.Application
 {
     public static ServiceProvider ServiceProvider { get; private set; } = null!;
 
@@ -38,8 +40,9 @@ public partial class App : Application
 
         services.AddSingleton<AuthApiClient>();
         services.AddSingleton<EditorApiClient>();
-        services.AddSingleton<MangakaSeriesApiClient>();
         services.AddSingleton<FileUploadApiClient>();
+
+        services.AddSingleton<IMangakaSeriesApiClient, MangakaSeriesApiClient>();
 
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<LoginViewModel>();

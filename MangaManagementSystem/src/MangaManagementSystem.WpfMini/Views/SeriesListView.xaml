@@ -1,0 +1,308 @@
+﻿<UserControl x:Class="MangaManagementSystem.WpfMini.Views.SeriesListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="650"
+             d:DesignWidth="1000">
+
+    <Grid Margin="20">
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ================= HEADER ================= -->
+
+        <Grid Grid.Row="0"
+              Margin="0,0,0,16">
+
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+
+                <TextBlock Text="{Binding PageTitle}"
+                           FontSize="26"
+                           FontWeight="Bold"
+                           Foreground="#2c3e50"/>
+
+                <TextBlock Text="{Binding PageSubtitle}"
+                           Margin="0,4,0,0"
+                           FontSize="13"
+                           Foreground="#7f8c8d"/>
+
+            </StackPanel>
+
+            <StackPanel Grid.Column="1"
+                        Orientation="Horizontal">
+
+                <Button Content="{Binding CreateButtonText}"
+                        Command="{Binding CreateSeriesCommand}"
+                        Visibility="{Binding ShowCreateButton,
+                            Converter={StaticResource BoolToVisibilityConverter}}"
+                        Padding="14,8"
+                        Margin="0,0,8,0"/>
+
+                <Button Content="Refresh"
+                        Command="{Binding RefreshCommand}"
+                        Padding="14,8"/>
+
+            </StackPanel>
+
+        </Grid>
+
+
+        <!-- ================= SEARCH / FILTER ================= -->
+
+        <Border Grid.Row="1"
+                Background="White"
+                BorderBrush="#dcdde1"
+                BorderThickness="1"
+                CornerRadius="5"
+                Padding="12"
+                Margin="0,0,0,12">
+
+            <Grid>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="220"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBox Grid.Column="0"
+                         Text="{Binding SearchText,
+                             UpdateSourceTrigger=PropertyChanged}"
+                         Padding="8"
+                         VerticalContentAlignment="Center"
+                         ToolTip="Search by title, slug, genre, or tag"/>
+
+                <TextBlock Grid.Column="1"
+                           Text="Status:"
+                           Margin="15,0,8,0"
+                           VerticalAlignment="Center"/>
+
+                <ComboBox Grid.Column="2"
+                          ItemsSource="{Binding StatusFilters}"
+                          SelectedItem="{Binding SelectedStatusCode}"
+                          Padding="6"/>
+
+            </Grid>
+
+        </Border>
+
+
+        <!-- ================= STATE ================= -->
+
+        <StackPanel Grid.Row="2"
+                    Margin="0,0,0,8">
+
+            <TextBlock Text="Loading series..."
+                       Foreground="#2980b9"
+                       FontWeight="SemiBold"
+                       Visibility="{Binding IsLoading,
+                           Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="#e74c3c"
+                       TextWrapping="Wrap"
+                       Margin="0,4,0,0"/>
+
+        </StackPanel>
+
+
+        <!-- ================= SERIES GRID ================= -->
+
+        <Border Grid.Row="3"
+                Background="White"
+                BorderBrush="#dcdde1"
+                BorderThickness="1"
+                CornerRadius="5">
+
+            <DataGrid ItemsSource="{Binding FilteredSeries}"
+                      SelectedItem="{Binding SelectedSeries}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      IsReadOnly="True"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      RowHeight="48">
+
+                <DataGrid.Columns>
+
+                    <!-- Title -->
+
+                    <DataGridTextColumn Header="Title"
+                                        Binding="{Binding Title}"
+                                        Width="2*"/>
+
+
+                    <!-- Status -->
+
+                    <DataGridTemplateColumn Header="Status"
+                                            Width="180">
+
+                        <DataGridTemplateColumn.CellTemplate>
+
+                            <DataTemplate>
+
+                                <Border Background="{Binding StatusCode,
+                                            Converter={StaticResource StatusToBrushConverter}}"
+                                        CornerRadius="4"
+                                        Padding="7,3"
+                                        HorizontalAlignment="Left">
+
+                                    <TextBlock Text="{Binding StatusCode}"
+                                               Foreground="White"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"/>
+
+                                </Border>
+
+                            </DataTemplate>
+
+                        </DataGridTemplateColumn.CellTemplate>
+
+                    </DataGridTemplateColumn>
+
+
+                    <!-- Genres -->
+
+                    <DataGridTemplateColumn Header="Genres"
+                                            Width="180">
+
+                        <DataGridTemplateColumn.CellTemplate>
+
+                            <DataTemplate>
+
+                                <ItemsControl ItemsSource="{Binding Genres}">
+
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+
+                                            <TextBlock Text="{Binding GenreName}"
+                                                       Margin="0,0,6,0"/>
+
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+
+                                </ItemsControl>
+
+                            </DataTemplate>
+
+                        </DataGridTemplateColumn.CellTemplate>
+
+                    </DataGridTemplateColumn>
+
+
+                    <!-- Tags -->
+
+                    <DataGridTemplateColumn Header="Tags"
+                                            Width="180">
+
+                        <DataGridTemplateColumn.CellTemplate>
+
+                            <DataTemplate>
+
+                                <ItemsControl ItemsSource="{Binding Tags}">
+
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+
+                                            <TextBlock Text="{Binding TagName}"
+                                                       Margin="0,0,6,0"/>
+
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+
+                                </ItemsControl>
+
+                            </DataTemplate>
+
+                        </DataGridTemplateColumn.CellTemplate>
+
+                    </DataGridTemplateColumn>
+
+
+                    <!-- Language -->
+
+                    <DataGridTextColumn Header="Language"
+                                        Binding="{Binding ContentLanguageCode}"
+                                        Width="90"/>
+
+
+                    <!-- Frequency -->
+
+                    <DataGridTextColumn Header="Frequency"
+                                        Binding="{Binding PublicationFrequencyCode}"
+                                        Width="120"/>
+
+
+                    <!-- Last Updated -->
+
+                    <DataGridTextColumn Header="Updated"
+                                        Binding="{Binding UpdatedAtUtc,
+                                            StringFormat={}{0:dd/MM/yyyy HH:mm}}"
+                                        Width="145"/>
+
+
+                    <!-- Open -->
+
+                    <DataGridTemplateColumn Header=""
+                                            Width="80">
+
+                        <DataGridTemplateColumn.CellTemplate>
+
+                            <DataTemplate>
+
+                                <Button Content="Open"
+                                        Padding="8,4"
+                                        Command="{Binding DataContext.OpenSeriesCommand,
+                                            RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                        CommandParameter="{Binding}"/>
+
+                            </DataTemplate>
+
+                        </DataGridTemplateColumn.CellTemplate>
+
+                    </DataGridTemplateColumn>
+
+                </DataGrid.Columns>
+
+            </DataGrid>
+
+        </Border>
+
+
+        <!-- ================= FOOTER ================= -->
+
+        <TextBlock Grid.Row="4"
+                   Margin="0,10,0,0"
+                   Foreground="#7f8c8d"
+                   Text="{Binding FilteredSeries.Count,
+                       StringFormat='Showing {0} series'}"/>
+
+    </Grid>
+
+</UserControl>

@@ -27,7 +27,7 @@
                 <views:EditorChapterReviewView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:MangakaSeriesListViewModel}">
-                <views:MangakaSeriesListView/>
+                <views:SeriesListView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:SeriesEditorViewModel}">
                 <views:SeriesEditorView/>
