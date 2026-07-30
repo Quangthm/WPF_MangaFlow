@@ -11,12 +11,6 @@ namespace MangaManagementSystem.Application.DTOs.Manga
         Guid? DeletedByUserId
     );
 
-    public record CreateChapterPageDto(
-        [Required] Guid ChapterId,
-        [Required] int PageNo,
-        string? PageNotes
-    );
-
     public record UpdateChapterPageDto(
         [Required] Guid ChapterPageId,
         [Required] Guid ChapterId,
@@ -43,15 +37,6 @@ namespace MangaManagementSystem.Application.DTOs.Manga
         ChapterPageDto Page,
         ChapterPageVersionDto Version,
         FileResourceDto FileResource
-    );
-
-    public sealed record CreateVersionWithFileAndRegionsRequestDto(
-        [Required] Guid ChapterPageId,
-        [Required] short VersionNo,
-        [Required] CreateFileResourceDto FileDto,
-        string? VersionNote,
-        IReadOnlyList<CreatePageRegionDto>? Regions,
-        bool SetAsCurrent
     );
 
     public sealed record GetVersionsByPageIdsRequest(IReadOnlyList<Guid> PageIds);

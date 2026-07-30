@@ -2,6 +2,7 @@ using MangaManagementSystem.Domain.Interfaces;
 using MangaManagementSystem.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace MangaManagementSystem.Infrastructure.Repositories
@@ -31,7 +32,8 @@ namespace MangaManagementSystem.Infrastructure.Repositories
 
         public virtual async Task<IReadOnlyList<T>> GetAllAsync()
             => await _dbSet.ToListAsync();
-
+        public virtual async Task<IReadOnlyList<T>> FindAsync(Expression<Func<T, bool>> predicate)
+            => await _dbSet.Where(predicate).ToListAsync();
         public virtual async Task AddAsync(T entity)
             => await _dbSet.AddAsync(entity);
 

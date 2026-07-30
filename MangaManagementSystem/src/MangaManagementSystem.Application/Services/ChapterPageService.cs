@@ -18,19 +18,6 @@ namespace MangaManagementSystem.Application.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<ChapterPageDto> CreateChapterPageAsync(CreateChapterPageDto dto)
-        {
-            var entity = new ChapterPage
-            {
-                ChapterId = dto.ChapterId,
-                PageNo = dto.PageNo,
-                PageNotes = dto.PageNotes
-            };
-            await _unitOfWork.ChapterPages.AddAsync(entity);
-            await _unitOfWork.SaveChangesAsync();
-            return MapToDto(entity);
-        }
-
         public async Task<ChapterPageDto?> GetChapterPageByIdAsync(Guid id)
         {
             var entity = await _unitOfWork.ChapterPages.GetByIdAsync(id);
