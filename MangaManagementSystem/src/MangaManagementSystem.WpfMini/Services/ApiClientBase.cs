@@ -48,6 +48,17 @@ public class ApiClientBase
         return await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions);
     }
 
+    public async Task<TResponse?> PutFormAsync<TResponse>(
+    string url,
+    MultipartFormDataContent form)
+    {
+        var response = await _httpClient.PutAsync(url, form);
+
+        await EnsureSuccessAsync(response);
+
+        return await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions);
+    }
+
     /// <summary>
     /// Kiểm tra response status code. Nếu lỗi, đọc body để lấy chi tiết.
     /// </summary>

@@ -17,7 +17,7 @@ namespace MangaManagementSystem.WpfMini.Views
     /// <summary>
     /// Interaction logic for SeriesEditorView.xaml
     /// </summary>
-    public partial class SeriesEditorView : Window
+    public partial class SeriesEditorView : UserControl
     {
         public SeriesEditorView()
         {

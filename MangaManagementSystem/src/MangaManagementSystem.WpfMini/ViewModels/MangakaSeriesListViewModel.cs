@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using MangaManagementSystem.Application.DTOs.Manga;
-using MangaManagementSystem.WpfMini.Services.Mangaka.Contracts;
+using MangaManagementSystem.WpfMini.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -15,6 +15,9 @@ namespace MangaManagementSystem.WpfMini.ViewModels
     : SeriesListViewModelBase
     {
         private readonly IMangakaSeriesApiClient _apiClient;
+        public event Action? CreateSeriesRequested;
+
+        public event Action<Guid>? OpenSeriesRequested;
         public MangakaSeriesListViewModel(IMangakaSeriesApiClient apiClient)
         {
             _apiClient = apiClient;
@@ -38,7 +41,7 @@ namespace MangaManagementSystem.WpfMini.ViewModels
 
         protected override void CreateSeries()
         {
-            // TODO: Navigate to SeriesEditorViewModel in create mode.
+            CreateSeriesRequested?.Invoke();
         }
 
         protected override void OpenSeries(SeriesDto? series)
@@ -47,7 +50,9 @@ namespace MangaManagementSystem.WpfMini.ViewModels
                 return;
 
             SelectedSeries = series;
-            // TODO: Navigate to SeriesEditorViewModel.
+
+            OpenSeriesRequested?.Invoke(
+                series.SeriesId);
         }
     }
 }

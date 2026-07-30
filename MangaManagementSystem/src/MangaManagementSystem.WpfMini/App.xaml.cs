@@ -1,8 +1,9 @@
-﻿using MangaManagementSystem.WpfMini.Services;
-using MangaManagementSystem.WpfMini.Services.Mangaka.ApiClient;
-using MangaManagementSystem.WpfMini.Services.Mangaka.Contracts;
+﻿using MangaManagementSystem.WpfMini.Interfaces;
+using MangaManagementSystem.WpfMini.Services;
+using MangaManagementSystem.WpfMini.Services.Mangaka;
+using MangaManagementSystem.WpfMini.Services.Series;
 using MangaManagementSystem.WpfMini.ViewModels;
-using MangaManagementSystem.WpfMini.Views;
+using MangaManagementSystem.WpfMini.ViewModels.Workspaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net.Http;
@@ -43,10 +44,14 @@ public partial class App : System.Windows.Application
         services.AddSingleton<FileUploadApiClient>();
 
         services.AddSingleton<IMangakaSeriesApiClient, MangakaSeriesApiClient>();
+        services.AddSingleton<IReferenceDataApiClient, ReferenceDataApiClient>();
 
         services.AddSingleton<MainWindowViewModel>();
         services.AddTransient<LoginViewModel>();
         services.AddTransient<ShellViewModel>();
+        services.AddTransient<MangakaWorkspaceViewModel>();
+        services.AddTransient<EditorWorkspaceViewModel>();
+        services.AddTransient<BoardWorkspaceViewModel>();
         services.AddTransient<EditorProposalReviewViewModel>();
         services.AddTransient<MangakaSeriesListViewModel>();
         services.AddTransient<SeriesEditorViewModel>();
