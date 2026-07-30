@@ -116,7 +116,6 @@ public partial class EditorChapterReviewViewModel : ObservableObject
         catch (Exception ex)
         {
             QueueErrorMessage = $"Failed to load queue: {ex.Message}";
-            LoadMockQueue();
         }
         finally
         {
@@ -148,7 +147,6 @@ public partial class EditorChapterReviewViewModel : ObservableObject
         catch (Exception ex)
         {
             DetailErrorMessage = $"Failed to load detail: {ex.Message}";
-            LoadMockDetail(item);
         }
         finally
         {
@@ -252,86 +250,4 @@ public partial class EditorChapterReviewViewModel : ObservableObject
         SelectedPageImageUrl = string.Empty;
     }
 
-    // ── Mock Data ──
-
-    private void LoadMockQueue()
-    {
-        UnderReviewCount = 5;
-        ApprovedThisWeekCount = 2;
-        RevisionRequestedCount = 1;
-        OnHoldCount = 0;
-
-        ChapterQueue.Clear();
-        ChapterQueue.Add(new EditorChapterReviewQueueItemDto
-        {
-            ChapterId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "Solo Leveling",
-            SeriesSlug = "solo-leveling",
-            ChapterNumberLabel = "Ch. 5",
-            ChapterTitle = "The Awakening",
-            StatusCode = "UNDER_REVIEW",
-            PageCount = 24,
-            CreatedAtUtc = DateTime.UtcNow.AddDays(-1)
-        });
-        ChapterQueue.Add(new EditorChapterReviewQueueItemDto
-        {
-            ChapterId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "Tower of God",
-            SeriesSlug = "tower-of-god",
-            ChapterNumberLabel = "Ch. 12",
-            ChapterTitle = "The Test",
-            StatusCode = "UNDER_REVIEW",
-            PageCount = 18,
-            CreatedAtUtc = DateTime.UtcNow.AddDays(-3)
-        });
-        ChapterQueue.Add(new EditorChapterReviewQueueItemDto
-        {
-            ChapterId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "TBATE",
-            SeriesSlug = "tmate",
-            ChapterNumberLabel = "Ch. 8",
-            ChapterTitle = "New Beginnings",
-            StatusCode = "REVISION_REQUESTED",
-            PageCount = 20,
-            CreatedAtUtc = DateTime.UtcNow.AddDays(-7)
-        });
-    }
-
-    private void LoadMockDetail(EditorChapterReviewQueueItemDto item)
-    {
-        var pages = new List<EditorChapterReviewPageDto>();
-        for (int i = 1; i <= item.PageCount; i++)
-        {
-            pages.Add(new EditorChapterReviewPageDto
-            {
-                ChapterPageId = Guid.NewGuid(),
-                PageNumber = i,
-                CurrentVersionId = Guid.NewGuid(),
-                CurrentVersionFileUrl = null,
-                CurrentVersionNo = 1
-            });
-        }
-
-        SelectedDetail = new EditorChapterReviewDetailDto
-        {
-            ChapterId = item.ChapterId,
-            SeriesId = item.SeriesId,
-            SeriesTitle = item.SeriesTitle,
-            SeriesSlug = item.SeriesSlug,
-            ChapterNumberLabel = item.ChapterNumberLabel,
-            ChapterTitle = item.ChapterTitle,
-            StatusCode = item.StatusCode,
-            PageCount = item.PageCount,
-            CurrentVersionCount = item.PageCount,
-            CreatedAtUtc = item.CreatedAtUtc,
-            SubmittedByDisplayName = "TestMangaka",
-            Pages = pages,
-            OpenAnnotations = []
-        };
-        HasDetail = true;
-        HasAnnotations = false;
-    }
 }

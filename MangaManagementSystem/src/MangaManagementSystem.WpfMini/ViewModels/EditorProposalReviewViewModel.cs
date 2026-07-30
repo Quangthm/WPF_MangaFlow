@@ -112,9 +112,6 @@ public partial class EditorProposalReviewViewModel : ObservableObject
         catch (Exception ex)
         {
             QueueErrorMessage = $"Failed to load queue: {ex.Message}";
-
-            // Fallback: mock data cho UI development
-            LoadMockQueue();
         }
         finally
         {
@@ -148,9 +145,6 @@ public partial class EditorProposalReviewViewModel : ObservableObject
         catch (Exception ex)
         {
             DetailErrorMessage = $"Failed to load detail: {ex.Message}";
-
-            // Fallback: mock detail
-            LoadMockDetail(item);
         }
         finally
         {
@@ -352,86 +346,4 @@ public partial class EditorProposalReviewViewModel : ObservableObject
         ActionSuccessMessage = string.Empty;
     }
 
-    /// <summary>
-    /// Mock data cho UI development khi backend chưa sẵn sàng.
-    /// </summary>
-    private void LoadMockQueue()
-    {
-        ProposalQueue.Clear();
-        ProposalQueue.Add(new ProposalQueueItem
-        {
-            SeriesProposalId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "Solo Leveling",
-            SeriesSlug = "solo-leveling",
-            ProposalVersionNo = 2,
-            ProposalTitle = "Solo Leveling - Season 2 Proposal",
-            SynopsisSnapshot = "The story follows Sung Jin-Woo...",
-            StatusCode = "UNDER_EDITORIAL_REVIEW",
-            SubmitterDisplayName = "TestMangaka1",
-            SubmittedAtUtc = DateTime.UtcNow.AddDays(-2),
-            Comments = null,
-            ProposalFileName = "solo-leveling-v2.pdf"
-        });
-        ProposalQueue.Add(new ProposalQueueItem
-        {
-            SeriesProposalId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "Tower of God",
-            SeriesSlug = "tower-of-god",
-            ProposalVersionNo = 1,
-            ProposalTitle = "Tower of God - Initial Proposal",
-            SynopsisSnapshot = "A boy named Bam climbs a mysterious tower...",
-            StatusCode = "UNDER_EDITORIAL_REVIEW",
-            SubmitterDisplayName = "TestMangaka2",
-            SubmittedAtUtc = DateTime.UtcNow.AddDays(-5),
-            Comments = null,
-            ProposalFileName = "tower-of-god-v1.pdf"
-        });
-        ProposalQueue.Add(new ProposalQueueItem
-        {
-            SeriesProposalId = Guid.NewGuid(),
-            SeriesId = Guid.NewGuid(),
-            SeriesTitle = "The Beginning After The End",
-            SeriesSlug = "tmate",
-            ProposalVersionNo = 1,
-            ProposalTitle = "TBATE - Season 1 Proposal",
-            SynopsisSnapshot = "King Grey dies and is reincarnated...",
-            StatusCode = "REVISION_REQUESTED",
-            SubmitterDisplayName = "TestMangaka3",
-            SubmittedAtUtc = DateTime.UtcNow.AddDays(-7),
-            Comments = "Please expand the synopsis.",
-            ProposalFileName = "tbate-v1.pdf"
-        });
-    }
-
-    private void LoadMockDetail(ProposalQueueItem item)
-    {
-        var rng = new Random();
-        SelectedDetail = new ProposalDetail
-        {
-            SeriesProposalId = item.SeriesProposalId,
-            SeriesId = item.SeriesId,
-            SeriesTitle = item.SeriesTitle,
-            SeriesSlug = item.SeriesSlug,
-            SeriesCoverUrl = null,
-            ProposalVersionNo = item.ProposalVersionNo,
-            ProposalTitle = item.ProposalTitle,
-            Genres = [new GenreDto { GenreId = 1, GenreName = "Action" }, new GenreDto { GenreId = 5, GenreName = "Fantasy" }],
-            Tags = [new TagDto { TagId = 23, TagName = "Magic" }, new TagDto { TagId = 31, TagName = "Overpowered Protagonist" }],
-            SynopsisSnapshot = item.SynopsisSnapshot,
-            ProposalStatusCode = item.StatusCode,
-            SubmitterDisplayName = item.SubmitterDisplayName,
-            SubmittedAtUtc = item.SubmittedAtUtc,
-            ProposalFileName = item.ProposalFileName,
-            CanClaim = true,
-            CanRequestRevision = item.StatusCode == "UNDER_EDITORIAL_REVIEW",
-            CanPassToBoard = item.StatusCode == "UNDER_EDITORIAL_REVIEW",
-            CanCancel = item.StatusCode is "UNDER_EDITORIAL_REVIEW" or "UNDER_BOARD_REVIEW",
-            CurrentActorIsActiveTantouEditorContributor = true,
-            CurrentActorHasClaimed = false,
-            HasEditorialDecision = false
-        };
-        HasDetail = true;
-    }
 }
