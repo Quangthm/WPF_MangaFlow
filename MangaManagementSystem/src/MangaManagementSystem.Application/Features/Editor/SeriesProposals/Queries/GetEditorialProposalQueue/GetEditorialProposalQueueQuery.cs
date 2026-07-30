@@ -10,5 +10,7 @@ namespace MangaManagementSystem.Application.Features.Editor.SeriesProposals.Quer
     /// Backed by an EF Core AsNoTracking read; no mutations.
     /// </summary>
     public sealed record GetEditorialProposalQueueQuery(
-        string? StatusCode) : IRequest<IReadOnlyList<ProposalQueueItemDto>>;
+        string? StatusCode,
+        Guid ActorUserId,
+        bool ClaimedByMe = false) : IRequest<IReadOnlyList<ProposalQueueItemDto>>;
 }

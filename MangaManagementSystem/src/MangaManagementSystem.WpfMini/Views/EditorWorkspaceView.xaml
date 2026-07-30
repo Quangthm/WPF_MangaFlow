@@ -28,6 +28,17 @@
                            FontWeight="Bold"
                            Margin="15,10,15,5"/>
 
+                <RadioButton Content="Dashboard"
+                             IsChecked="{Binding IsOnDashboard}"
+                             Command="{Binding NavigateToDashboardCommand}"
+                             Foreground="White"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="15,8"
+                             Margin="0,2"
+                             FontSize="14"
+                             Cursor="Hand"/>
+
                 <RadioButton Content="Proposal Review"
                              IsChecked="{Binding IsOnProposalReview}"
                              Command="{Binding NavigateToProposalReviewCommand}"
@@ -39,7 +50,16 @@
                              FontSize="14"
                              Cursor="Hand"/>
 
-                <!-- Add Editor Chapter Review navigation here later. -->
+                <RadioButton Content="Chapter Review"
+                             IsChecked="{Binding IsOnChapterReview}"
+                             Command="{Binding NavigateToChapterReviewCommand}"
+                             Foreground="White"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="15,8"
+                             Margin="0,2"
+                             FontSize="14"
+                             Cursor="Hand"/>
 
             </StackPanel>
 

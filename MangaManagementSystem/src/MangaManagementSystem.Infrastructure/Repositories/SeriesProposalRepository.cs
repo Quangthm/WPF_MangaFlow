@@ -124,6 +124,23 @@ namespace MangaManagementSystem.Infrastructure.Repositories
                     sc.User.Role.RoleName == "Tantou Editor", ct);
         }
 
+        public async Task<HashSet<Guid>> GetActiveTantouEditorSeriesIdsAsync(
+            Guid actorUserId, IReadOnlyList<Guid> seriesIds, CancellationToken ct = default)
+        {
+            if (actorUserId == Guid.Empty || seriesIds is null || seriesIds.Count == 0)
+                return new HashSet<Guid>();
+
+            var ids = await _dbContext.ActiveSeriesContributors
+                .AsNoTracking()
+                .Where(asc => asc.UserId == actorUserId
+                    && asc.RoleName == "Tantou Editor"
+                    && seriesIds.Contains(asc.SeriesId))
+                .Select(asc => asc.SeriesId)
+                .ToListAsync(ct);
+
+            return new HashSet<Guid>(ids);
+        }
+
         public async Task<Guid?> ClaimEditorialReviewAsync(Guid seriesProposalId, Guid actorUserId, string? notes, CancellationToken ct = default)
         {
             var outParam = new SqlParameter("@new_series_contributor_id", SqlDbType.UniqueIdentifier) { Direction = ParameterDirection.Output };

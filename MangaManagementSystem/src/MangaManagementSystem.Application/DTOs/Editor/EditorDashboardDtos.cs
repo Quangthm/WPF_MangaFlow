@@ -14,6 +14,7 @@ namespace MangaManagementSystem.Application.DTOs.Editor
         int ChaptersUnderReviewCount,
         int PendingAnnotationCount,
         int SerializedSeriesCount,
+        int CompletedProposalCount,
         IReadOnlyList<EditorDashboardProposalDto> ProposalReviewQueue,
         IReadOnlyList<EditorDashboardSeriesActivityDto> RecentSeriesActivity);
 

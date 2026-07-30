@@ -52,9 +52,12 @@ public partial class App : System.Windows.Application
         services.AddTransient<MangakaWorkspaceViewModel>();
         services.AddTransient<EditorWorkspaceViewModel>();
         services.AddTransient<BoardWorkspaceViewModel>();
+        services.AddTransient<EditorDashboardViewModel>();
         services.AddTransient<EditorProposalReviewViewModel>();
+        services.AddTransient<EditorChapterReviewViewModel>();
         services.AddTransient<MangakaSeriesListViewModel>();
         services.AddTransient<SeriesEditorViewModel>();
+
         ServiceProvider = services.BuildServiceProvider();
 
         var mainWindow = new MainWindow();

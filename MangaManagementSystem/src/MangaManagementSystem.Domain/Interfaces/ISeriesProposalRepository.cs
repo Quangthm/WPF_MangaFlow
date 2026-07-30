@@ -38,6 +38,12 @@ namespace MangaManagementSystem.Domain.Interfaces
         Task<bool> IsActiveTantouEditorContributorAsync(Guid seriesId, Guid userId, CancellationToken ct = default);
 
         /// <summary>
+        /// Returns the set of SeriesIds where the specified user is an active Tantou Editor contributor.
+        /// Used to batch-compute claim flags for the proposal queue.
+        /// </summary>
+        Task<HashSet<Guid>> GetActiveTantouEditorSeriesIdsAsync(Guid actorUserId, IReadOnlyList<Guid> seriesIds, CancellationToken ct = default);
+
+        /// <summary>
         /// Submits a series proposal for editorial review via <c>manga.usp_SeriesProposal_Submit</c>.
         /// The stored procedure: validates the series is PROPOSAL_DRAFT, validates the submitter is
         /// an active Mangaka contributor, creates the SERIES_PROPOSAL FileResource, creates the

@@ -22,16 +22,20 @@
             <DataTemplate DataType="{x:Type workspaceVm:MangakaWorkspaceViewModel}">
                 <workspaceViews:MangakaWorkspaceView/>
             </DataTemplate>
-
             <DataTemplate DataType="{x:Type workspaceVm:EditorWorkspaceViewModel}">
                 <workspaceViews:EditorWorkspaceView/>
             </DataTemplate>
-
             <DataTemplate DataType="{x:Type workspaceVm:BoardWorkspaceViewModel}">
                 <workspaceViews:BoardWorkspaceView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditorDashboardViewModel}">
+                <views:EditorDashboardView/>
+            </DataTemplate>
             <DataTemplate DataType="{x:Type vm:EditorProposalReviewViewModel}">
                 <views:EditorProposalReviewView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:EditorChapterReviewViewModel}">
+                <views:EditorChapterReviewView/>
             </DataTemplate>
             <DataTemplate DataType="{x:Type vm:MangakaSeriesListViewModel}">
                 <views:SeriesListView/>
@@ -39,6 +43,7 @@
             <DataTemplate DataType="{x:Type vm:SeriesEditorViewModel}">
                 <views:SeriesEditorView/>
             </DataTemplate>
+
             <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <converters:StatusToBrushConverter x:Key="StatusToBrushConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
