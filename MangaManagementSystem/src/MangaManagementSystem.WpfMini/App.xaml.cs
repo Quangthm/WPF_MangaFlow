@@ -41,6 +41,7 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<AuthApiClient>();
         services.AddSingleton<EditorApiClient>();
+        services.AddSingleton<BoardApiClient>();
         services.AddSingleton<FileUploadApiClient>();
 
         services.AddSingleton<IMangakaSeriesApiClient, MangakaSeriesApiClient>();

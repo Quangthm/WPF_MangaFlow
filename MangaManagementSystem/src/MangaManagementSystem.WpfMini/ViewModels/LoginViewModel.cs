@@ -2,9 +2,9 @@ using System.Collections.ObjectModel;
 using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using MangaManagementSystem.WpfMini.Models;
 using MangaManagementSystem.WpfMini.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MangaManagementSystem.WpfMini.ViewModels;
 
@@ -27,7 +27,8 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<TestUserDto> _testUsers = [];
 
-    private MainWindowViewModel MainVm => App.ServiceProvider.GetRequiredService<MainWindowViewModel>();
+    private MainWindowViewModel MainVm =>
+        App.ServiceProvider.GetRequiredService<MainWindowViewModel>();
 
     public LoginViewModel(AuthApiClient authApi)
     {
@@ -43,33 +44,39 @@ public partial class LoginViewModel : ObservableObject
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(Password))
+        {
+            ErrorMessage = "Password is required.";
+            return;
+        }
+
         IsLoading = true;
         ErrorMessage = string.Empty;
 
         try
         {
-            var request = new LoginRequest
+            var response = await _authApi.LoginAsync(new LoginRequest
             {
-                Username = Username,
+                Username = Username.Trim(),
                 Password = Password
-            };
+            });
 
-            var response = await _authApi.LoginAsync(request);
-
-            if (response is null)
+            if (response is null
+                || response.User.UserId == Guid.Empty
+                || string.IsNullOrWhiteSpace(response.AccessToken))
             {
-                ErrorMessage = "Login failed. No response from server.";
+                ErrorMessage = "Login failed. The server returned an invalid response.";
                 return;
             }
 
-            var session = new CurrentUserSession
+            MainVm.SetSession(new CurrentUserSession
             {
-                UserId = response.UserId,
-                Username = response.Username,
-                RoleCode = response.RoleCode
-            };
-
-            MainVm.SetSession(session);
+                UserId = response.User.UserId.ToString(),
+                Username = response.User.Username,
+                RoleCode = MapRoleNameToCode(response.RoleName),
+                AccessToken = response.AccessToken,
+                ExpiresAtUtc = response.ExpiresAtUtc
+            });
         }
         catch (HttpRequestException ex)
         {
@@ -94,10 +101,7 @@ public partial class LoginViewModel : ObservableObject
         try
         {
             var users = await _authApi.GetTestUsersAsync();
-            if (users is not null)
-            {
-                TestUsers = new ObservableCollection<TestUserDto>(users);
-            }
+            TestUsers = new ObservableCollection<TestUserDto>(users ?? []);
         }
         catch (Exception ex)
         {
@@ -112,10 +116,29 @@ public partial class LoginViewModel : ObservableObject
     [RelayCommand]
     private async Task QuickLoginAsync(TestUserDto? user)
     {
-        if (user is null) return;
+        if (user is null)
+        {
+            return;
+        }
 
         Username = user.Username;
         Password = "Password123!";
         await LoginAsync();
+    }
+
+    private static string MapRoleNameToCode(string? roleName)
+    {
+        return roleName?.Trim() switch
+        {
+            "Tantou Editor" => "EDITOR",
+            "Editorial Board Chief" => "BOARD_CHIEF",
+            "Editorial Board Member" => "BOARD_MEMBER",
+            "Mangaka" => "MANGAKA",
+            "Assistant" => "ASSISTANT",
+            "Admin" => "ADMIN",
+            _ => (roleName ?? string.Empty)
+                .Replace(" ", "_", StringComparison.Ordinal)
+                .ToUpperInvariant()
+        };
     }
 }

@@ -1,10 +1,11 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Net.Http;
 
 namespace MangaManagementSystem.WpfMini.Services;
 
-public class ApiClientBase
+public sealed class ApiClientBase
 {
     private readonly HttpClient _httpClient;
 
@@ -15,11 +16,12 @@ public class ApiClientBase
 
     public void SetActorUserId(string userId)
     {
-        if (!Guid.TryParse(userId, out _))
-            return;
-
         _httpClient.DefaultRequestHeaders.Remove("X-Actor-User-Id");
-        _httpClient.DefaultRequestHeaders.Add("X-Actor-User-Id", userId);
+
+        if (Guid.TryParse(userId, out _))
+        {
+            _httpClient.DefaultRequestHeaders.Add("X-Actor-User-Id", userId);
+        }
     }
 
     public void ClearActorUserId()
@@ -27,12 +29,26 @@ public class ApiClientBase
         _httpClient.DefaultRequestHeaders.Remove("X-Actor-User-Id");
     }
 
+    public void SetBearerToken(string? accessToken)
+    {
+        _httpClient.DefaultRequestHeaders.Authorization =
+            string.IsNullOrWhiteSpace(accessToken)
+                ? null
+                : new AuthenticationHeaderValue("Bearer", accessToken);
+    }
+
+    public void ClearBearerToken()
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = null;
+    }
+
     public async Task<T?> GetAsync<T>(
         string url,
         CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.GetAsync(url, cancellationToken);
+        using var response = await _httpClient.GetAsync(url, cancellationToken);
         await EnsureSuccessAsync(response);
+
         return await response.Content.ReadFromJsonAsync<T>(
             JsonOptions,
             cancellationToken);
@@ -43,12 +59,14 @@ public class ApiClientBase
         TRequest body,
         CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.PostAsJsonAsync(
+        using var response = await _httpClient.PostAsJsonAsync(
             url,
             body,
             JsonOptions,
             cancellationToken);
+
         await EnsureSuccessAsync(response);
+
         return await response.Content.ReadFromJsonAsync<TResponse>(
             JsonOptions,
             cancellationToken);
@@ -59,8 +77,13 @@ public class ApiClientBase
         CancellationToken cancellationToken = default)
     {
         using var content = new ByteArrayContent([]);
-        var response = await _httpClient.PostAsync(url, content, cancellationToken);
+        using var response = await _httpClient.PostAsync(
+            url,
+            content,
+            cancellationToken);
+
         await EnsureSuccessAsync(response);
+
         return await response.Content.ReadFromJsonAsync<TResponse>(
             JsonOptions,
             cancellationToken);
@@ -71,20 +94,24 @@ public class ApiClientBase
         TRequest body,
         CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.PutAsJsonAsync(
+        using var response = await _httpClient.PutAsJsonAsync(
             url,
             body,
             JsonOptions,
             cancellationToken);
+
         await EnsureSuccessAsync(response);
+
         return await response.Content.ReadFromJsonAsync<TResponse>(
             JsonOptions,
             cancellationToken);
     }
 
-    public async Task<TResponse?> PostFormAsync<TResponse>(string url, MultipartFormDataContent form)
+    public async Task<TResponse?> PostFormAsync<TResponse>(
+        string url,
+        MultipartFormDataContent form)
     {
-        var response = await _httpClient.PostAsync(url, form);
+        using var response = await _httpClient.PostAsync(url, form);
         await EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions);
     }
@@ -94,8 +121,9 @@ public class ApiClientBase
         MultipartFormDataContent form,
         CancellationToken cancellationToken)
     {
-        var response = await _httpClient.PostAsync(url, form, cancellationToken);
+        using var response = await _httpClient.PostAsync(url, form, cancellationToken);
         await EnsureSuccessAsync(response);
+
         return await response.Content.ReadFromJsonAsync<TResponse>(
             JsonOptions,
             cancellationToken);
@@ -106,11 +134,12 @@ public class ApiClientBase
         TRequest body,
         CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.PutAsJsonAsync(
+        using var response = await _httpClient.PutAsJsonAsync(
             url,
             body,
             JsonOptions,
             cancellationToken);
+
         await EnsureSuccessAsync(response);
     }
 
@@ -118,58 +147,71 @@ public class ApiClientBase
         string url,
         CancellationToken cancellationToken = default)
     {
-        var response = await _httpClient.DeleteAsync(url, cancellationToken);
+        using var response = await _httpClient.DeleteAsync(url, cancellationToken);
         await EnsureSuccessAsync(response);
     }
 
     public async Task<TResponse?> PutFormAsync<TResponse>(
-    string url,
-    MultipartFormDataContent form)
+        string url,
+        MultipartFormDataContent form)
     {
-        var response = await _httpClient.PutAsync(url, form);
-
+        using var response = await _httpClient.PutAsync(url, form);
         await EnsureSuccessAsync(response);
-
         return await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions);
     }
 
-    /// <summary>
-    /// Kiểm tra response status code. Nếu lỗi, đọc body để lấy chi tiết.
-    /// </summary>
     private static async Task EnsureSuccessAsync(HttpResponseMessage response)
     {
-        if (!response.IsSuccessStatusCode)
+        if (response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync();
-            var detail = string.Empty;
-
-            try
-            {
-                using var doc = JsonDocument.Parse(body);
-                if (doc.RootElement.TryGetProperty("error", out var errProp))
-                {
-                    detail = errProp.GetString();
-                }
-                else if (doc.RootElement.TryGetProperty("message", out var msgProp))
-                {
-                    detail = msgProp.GetString();
-                }
-                else if (doc.RootElement.TryGetProperty("detail", out var detailProp))
-                {
-                    detail = detailProp.GetString();
-                }
-            }
-            catch
-            {
-                // not JSON
-            }
-
-            var msg = !string.IsNullOrWhiteSpace(detail)
-                ? detail
-                : $"The request failed with HTTP {(int)response.StatusCode}.";
-
-            throw new HttpRequestException(msg, null, response.StatusCode);
+            return;
         }
+
+        var body = await response.Content.ReadAsStringAsync();
+        string? detail = null;
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+            var root = document.RootElement;
+
+            if (root.TryGetProperty("error", out var errorProperty))
+            {
+                detail = errorProperty.ValueKind == JsonValueKind.String
+                    ? errorProperty.GetString()
+                    : errorProperty.TryGetProperty("message", out var nestedMessage)
+                        ? nestedMessage.GetString()
+                        : null;
+            }
+
+            if (string.IsNullOrWhiteSpace(detail)
+                && root.TryGetProperty("message", out var messageProperty))
+            {
+                detail = messageProperty.GetString();
+            }
+
+            if (string.IsNullOrWhiteSpace(detail)
+                && root.TryGetProperty("detail", out var detailProperty))
+            {
+                detail = detailProperty.GetString();
+            }
+
+            if (string.IsNullOrWhiteSpace(detail)
+                && root.TryGetProperty("title", out var titleProperty))
+            {
+                detail = titleProperty.GetString();
+            }
+        }
+        catch (JsonException)
+        {
+            // The response was not JSON. The status-code fallback below is enough.
+        }
+
+        var message = !string.IsNullOrWhiteSpace(detail)
+            ? detail
+            : $"The request failed with HTTP {(int)response.StatusCode}.";
+
+        throw new HttpRequestException(message, null, response.StatusCode);
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new()

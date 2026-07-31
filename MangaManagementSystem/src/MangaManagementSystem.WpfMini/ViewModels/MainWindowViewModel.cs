@@ -1,15 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using MangaManagementSystem.WpfMini.Models;
 using MangaManagementSystem.WpfMini.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MangaManagementSystem.WpfMini.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly ApiClientBase _api;
-    private readonly AuthApiClient _authApi;
 
     [ObservableProperty]
     private ObservableObject? _currentViewModel;
@@ -26,12 +25,13 @@ public partial class MainWindowViewModel : ObservableObject
     public MainWindowViewModel(ApiClientBase api, AuthApiClient authApi)
     {
         _api = api;
-        _authApi = authApi;
     }
 
     public void SetSession(CurrentUserSession session)
     {
         _api.SetActorUserId(session.UserId);
+        _api.SetBearerToken(session.AccessToken);
+
         CurrentSession = session;
         IsLoggedIn = true;
         Title = $"Manga Management - {session.Username} ({session.RoleCode})";
@@ -42,6 +42,8 @@ public partial class MainWindowViewModel : ObservableObject
     private void Logout()
     {
         _api.ClearActorUserId();
+        _api.ClearBearerToken();
+
         CurrentSession = null;
         IsLoggedIn = false;
         Title = "Manga Management System";
