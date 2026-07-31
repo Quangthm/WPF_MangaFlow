@@ -43,6 +43,15 @@
             <DataTemplate DataType="{x:Type vm:SeriesEditorViewModel}">
                 <views:SeriesEditorView/>
             </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ChapterListViewModel}">
+                <views:ChapterListView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ChapterEditorViewModel}">
+                <views:ChapterEditorView/>
+            </DataTemplate>
+            <DataTemplate DataType="{x:Type vm:ChapterPageWorkspaceViewModel}">
+                <views:ChapterPageWorkspaceView/>
+            </DataTemplate>
 
             <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <converters:StatusToBrushConverter x:Key="StatusToBrushConverter"/>

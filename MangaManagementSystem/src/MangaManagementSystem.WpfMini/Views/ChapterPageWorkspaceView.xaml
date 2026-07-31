@@ -1,0 +1,231 @@
+<UserControl x:Class="MangaManagementSystem.WpfMini.Views.ChapterPageWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="560">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBlock Text="{Binding BusyMessage}"
+                       Foreground="#2980b9"
+                       FontWeight="SemiBold"
+                       Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"/>
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="#c0392b"
+                       TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding SuccessMessage}"
+                       Foreground="#27ae60"
+                       TextWrapping="Wrap"/>
+            <Border Background="#fff4ce"
+                    BorderBrush="#e1b12c"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8"
+                    Margin="0,5,0,0"
+                    Visibility="{Binding HasContentLockMessage, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Text="{Binding ContentLockMessage}" TextWrapping="Wrap"/>
+            </Border>
+        </StackPanel>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="230"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="12"/>
+                <ColumnDefinition Width="270"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" BorderBrush="#dcdde1" BorderThickness="1" CornerRadius="5" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="Pages" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" HorizontalAlignment="Right">
+                            <Button Content="Add"
+                                    Command="{Binding AddPagesCommand}"
+                                    IsEnabled="{Binding CanAddPages}"
+                                    Padding="8,4"
+                                    Margin="6,0,4,0"/>
+                            <Button Content="Refresh"
+                                    Command="{Binding RefreshCommand}"
+                                    IsEnabled="{Binding IsChapterSaved}"
+                                    Padding="8,4"/>
+                        </StackPanel>
+                    </DockPanel>
+                    <Grid Grid.Row="1">
+                        <ListBox ItemsSource="{Binding Pages}"
+                                 SelectedItem="{Binding SelectedPage}"
+                                 BorderThickness="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="4">
+                                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding VersionCount, StringFormat={}{0} version(s)}"
+                                                   Foreground="#7f8c8d"
+                                                   FontSize="11"/>
+                                        <TextBlock Text="{Binding CurrentVersionText}"
+                                                   Foreground="#2980b9"
+                                                   FontSize="11"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Text="No pages have been uploaded."
+                                   Foreground="#7f8c8d"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   Visibility="{Binding HasNoPages, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" BorderBrush="#dcdde1" BorderThickness="1" CornerRadius="5" Padding="12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <DockPanel Margin="0,0,0,8">
+                        <TextBlock Text="{Binding SelectedPage.DisplayName}"
+                                   FontSize="17"
+                                   FontWeight="SemiBold"/>
+                        <Border DockPanel.Dock="Right"
+                                Background="#27ae60"
+                                CornerRadius="4"
+                                Padding="7,2"
+                                Visibility="{Binding SelectedVersion.IsCurrentVersion, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="CURRENT" Foreground="White" FontSize="10" FontWeight="Bold"/>
+                        </Border>
+                    </DockPanel>
+                    <Border Grid.Row="1" Background="#2f3640" MinHeight="420" Padding="10">
+                        <Grid>
+                            <Image Source="{Binding SelectedVersion.ImageUrl}" Stretch="Uniform"/>
+                            <TextBlock Text="Image unavailable"
+                                       Foreground="White"
+                                       FontSize="16"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding SelectedVersion.IsImageUnavailable, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </Grid>
+                    </Border>
+                    <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                        <TextBlock Text="{Binding SelectedVersion.VersionDisplayText}"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding SelectedVersion.OriginalFileName}"
+                                   Foreground="#7f8c8d"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding SelectedVersion.VersionNote}"
+                                   TextWrapping="Wrap"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="4" BorderBrush="#dcdde1" BorderThickness="1" CornerRadius="5" Padding="10">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Version History" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                    <ListBox Grid.Row="1"
+                             ItemsSource="{Binding SelectedPage.Versions}"
+                             SelectedItem="{Binding SelectedVersion}"
+                             BorderThickness="0">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding VersionDisplayText}" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding VersionNote}"
+                                                   Foreground="#7f8c8d"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <Border Grid.Column="1"
+                                            Background="#27ae60"
+                                            CornerRadius="3"
+                                            Padding="5,1"
+                                            VerticalAlignment="Center"
+                                            Visibility="{Binding IsCurrentVersion, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="CURRENT" Foreground="White" FontSize="9"/>
+                                    </Border>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                        <TextBlock Text="New version note"/>
+                        <TextBox Text="{Binding NewVersionNote, UpdateSourceTrigger=PropertyChanged}"
+                                 MaxLength="1000"
+                                 AcceptsReturn="True"
+                                 Height="55"
+                                 TextWrapping="Wrap"/>
+                        <CheckBox Content="Set as current"
+                                  IsChecked="{Binding SetNewVersionAsCurrent}"
+                                  Margin="0,6,0,8"/>
+                        <Button Content="Upload New Version"
+                                Command="{Binding UploadNewVersionCommand}"
+                                IsEnabled="{Binding CanUploadVersion}"
+                                Padding="10,6"
+                                Margin="0,0,0,6"/>
+                        <Button Content="Set Selected as Current"
+                                Command="{Binding SetCurrentVersionCommand}"
+                                IsEnabled="{Binding CanSetCurrentVersion}"
+                                Padding="10,6"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Border Grid.Row="2"
+                BorderBrush="#dcdde1"
+                BorderThickness="1"
+                CornerRadius="5"
+                Padding="12"
+                Margin="0,12,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="Page Notes" FontWeight="SemiBold"/>
+                    <TextBox Text="{Binding SelectedPageNotes, UpdateSourceTrigger=PropertyChanged}"
+                             IsReadOnly="{Binding CanSavePageNotes, Converter={StaticResource InverseBoolConverter}}"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             MinHeight="70"
+                             MaxLength="2000"
+                             Margin="0,5,10,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
+                    <Button Content="Save Notes"
+                            Command="{Binding SavePageNotesCommand}"
+                            IsEnabled="{Binding CanSavePageNotes}"
+                            Padding="12,6"
+                            Margin="0,0,0,6"/>
+                    <Button Content="Delete Page"
+                            Command="{Binding DeletePageCommand}"
+                            IsEnabled="{Binding CanDeletePage}"
+                            Padding="12,6"
+                            Foreground="#c0392b"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

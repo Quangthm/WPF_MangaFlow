@@ -8,6 +8,7 @@ using MangaManagementSystem.WpfMini.Services;
 using MangaManagementSystem.WpfMini.Services.Series;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 
 namespace MangaManagementSystem.WpfMini.ViewModels;
@@ -18,6 +19,7 @@ public partial class SeriesEditorViewModel : ObservableObject
     private readonly IReferenceDataApiClient _referenceDataApiClient;
 
     public event Action? BackRequested;
+    public event Action<Guid, string>? ManageChaptersRequested;
 
     [ObservableProperty]
     private Guid? _seriesId;
@@ -87,6 +89,29 @@ public partial class SeriesEditorViewModel : ObservableObject
             StatusCode,
             "PROPOSAL_DRAFT",
             StringComparison.OrdinalIgnoreCase);
+
+    public bool CanManageChapters =>
+        !IsCreateMode &&
+        SeriesId.HasValue &&
+        SeriesId.Value != Guid.Empty &&
+        !IsBusy &&
+        string.Equals(
+            StatusCode?.Trim(),
+            "SERIALIZED",
+            StringComparison.OrdinalIgnoreCase);
+
+    public bool ShowManageChapters =>
+        !IsCreateMode &&
+        SeriesId.HasValue &&
+        SeriesId.Value != Guid.Empty;
+
+    public bool ShowManageChaptersUnavailableReason =>
+        ShowManageChapters && !CanManageChapters && !IsBusy;
+
+    public string ManageChaptersUnavailableReason =>
+        ShowManageChaptersUnavailableReason
+            ? $"Chapter management is available only for SERIALIZED series. Current status: {StatusCode?.Trim()}."
+            : string.Empty;
 
     public string SaveButtonText =>
         IsCreateMode
@@ -523,6 +548,22 @@ public partial class SeriesEditorViewModel : ObservableObject
         }
     }
 
+    [RelayCommand(CanExecute = nameof(CanManageChapters))]
+    private void ManageChapters()
+    {
+        Debug.WriteLine(
+            $"ManageChapters command: SeriesId={SeriesId}, Status={StatusCode}, CanManage={CanManageChapters}");
+
+        if (IsBusy || !CanManageChapters || !SeriesId.HasValue)
+            return;
+
+        Debug.WriteLine(
+            $"ManageChaptersRequested: SeriesId={SeriesId.Value}, Title={Title}");
+        ManageChaptersRequested?.Invoke(
+            SeriesId.Value,
+            Title);
+    }
+
     [RelayCommand]
     private void Back()
     {
@@ -538,8 +579,18 @@ public partial class SeriesEditorViewModel : ObservableObject
         NotifyModeProperties();
     }
 
+    partial void OnSeriesIdChanged(Guid? value)
+    {
+        NotifyModeProperties();
+    }
+
     partial void OnStatusCodeChanged(
         string value)
+    {
+        NotifyModeProperties();
+    }
+
+    partial void OnIsBusyChanged(bool value)
     {
         NotifyModeProperties();
     }
@@ -565,6 +616,20 @@ public partial class SeriesEditorViewModel : ObservableObject
 
         OnPropertyChanged(
             nameof(CanUseDraftActions));
+
+        OnPropertyChanged(
+            nameof(CanManageChapters));
+
+        OnPropertyChanged(
+            nameof(ShowManageChapters));
+
+        OnPropertyChanged(
+            nameof(ShowManageChaptersUnavailableReason));
+
+        OnPropertyChanged(
+            nameof(ManageChaptersUnavailableReason));
+
+        ManageChaptersCommand.NotifyCanExecuteChanged();
 
         OnPropertyChanged(
             nameof(SaveButtonText));

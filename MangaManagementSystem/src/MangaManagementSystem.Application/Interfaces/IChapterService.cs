@@ -12,5 +12,7 @@ namespace MangaManagementSystem.Application.Interfaces
         Task DeleteChapterAsync(Guid id);
         Task UpdateChapterStatusAsync(Guid id, string statusCode);
         Task UpdateChapterTitleAsync(Guid id, string newTitle);
+        Task EnsureChapterAllowsContentMutationsAsync(Guid chapterId);
+
     }
 }

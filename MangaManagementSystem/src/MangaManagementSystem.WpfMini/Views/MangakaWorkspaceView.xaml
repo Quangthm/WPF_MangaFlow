@@ -38,7 +38,19 @@
                              Margin="0,2"
                              FontSize="14"
                              Cursor="Hand"/>
-
+                <RadioButton
+                    Content="Chapters"
+                    GroupName="MangakaNavigation"
+                    IsChecked="{Binding IsOnChapters, Mode=OneWay}"
+                    Command="{Binding NavigateToChaptersCommand}"
+                    ToolTip="Open the chapter list for the currently selected series"
+                    Foreground="White"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="15,8"
+                    Margin="0,2"
+                    FontSize="14"
+                    Cursor="Hand"/>
                 <!-- Add Mangaka Chapter navigation here later. -->
 
             </StackPanel>

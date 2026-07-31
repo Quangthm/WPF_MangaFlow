@@ -42,7 +42,12 @@ namespace MangaManagementSystem.Application.Services
             var entity = await _unitOfWork.FileResources.GetByIdAsync(id);
             return entity == null ? null : MapToDto(entity);
         }
-
+        public async Task<IEnumerable<FileResourceDto>> GetFileResourcesByIdsAsync(IEnumerable<Guid> ids)
+        {
+            var idSet = ids.ToHashSet();
+            var entities = await _unitOfWork.FileResources.FindAsync(f => idSet.Contains(f.FileResourceId));
+            return entities.Select(MapToDto);
+        }
         public async Task<IEnumerable<FileResourceDto>> GetAllFileResourcesAsync()
         {
             var entities = await _unitOfWork.FileResources.GetAllAsync();

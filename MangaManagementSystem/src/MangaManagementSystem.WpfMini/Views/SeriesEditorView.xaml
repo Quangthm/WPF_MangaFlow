@@ -53,6 +53,14 @@
 
                 </StackPanel>
 
+                <TextBlock Text="{Binding ManageChaptersUnavailableReason}"
+                           Foreground="#c0392b"
+                           FontSize="12"
+                           Margin="0,6,0,0"
+                           TextWrapping="Wrap"
+                           Visibility="{Binding ShowManageChaptersUnavailableReason,
+                               Converter={StaticResource BoolToVisibilityConverter}}"/>
+
             </StackPanel>
 
             <Button Grid.Column="1"
@@ -475,6 +483,14 @@
 
                 <Button Content="Back"
                         Command="{Binding BackCommand}"
+                        Padding="15,7"
+                        Margin="0,0,8,0"/>
+
+                <Button Content="Manage Chapters"
+                        Command="{Binding ManageChaptersCommand}"
+                        Visibility="{Binding ShowManageChapters,
+                            Converter={StaticResource BoolToVisibilityConverter}}"
+                        ToolTip="{Binding ManageChaptersUnavailableReason}"
                         Padding="15,7"
                         Margin="0,0,8,0"/>
 
