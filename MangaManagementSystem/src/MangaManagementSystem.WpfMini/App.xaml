@@ -57,6 +57,7 @@
             <converters:StatusToBrushConverter x:Key="StatusToBrushConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:RoleToVisibilityConverter x:Key="RoleToVisibilityConverter"/>
+            <converters:StringToImageSourceConverter x:Key="StringToImageSourceConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

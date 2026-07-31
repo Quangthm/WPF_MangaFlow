@@ -79,8 +79,7 @@
                 <ListBox.Resources>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="Padding" Value="0"/>
-                        <Setter Property="Margin" Value="0,0,0,6"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Margin" Value="0,0,0,8"/>
                         <Setter Property="Background" Value="Transparent"/>
                         <Setter Property="Template">
                             <Setter.Value>
@@ -90,7 +89,7 @@
                                             CornerRadius="5"
                                             Padding="0"
                                             BorderThickness="0">
-                                        <ContentPresenter/>
+                                        <ContentPresenter HorizontalAlignment="Stretch"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
@@ -184,6 +183,13 @@
                        Foreground="#777"
                        Visibility="{Binding IsDetailLoading, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
+            <!-- Error message -->
+            <TextBlock Text="{Binding DetailErrorMessage}" Foreground="#e74c3c"
+                       TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Margin="20"
+                       Visibility="{Binding DetailErrorMessage, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+            <!-- Detail Content -->
             <ScrollViewer Visibility="{Binding HasDetail, Converter={StaticResource BoolToVisibilityConverter}}">
                 <StackPanel Margin="0,0,8,8">
                     <Border Background="White"
@@ -411,21 +417,21 @@
                                         Padding="12,6"
                                         Margin="0,0,7,0"
                                         Visibility="{Binding IsRevisionMode, Converter={StaticResource BoolToVisibilityConverter}}"
-                                        IsEnabled="{Binding IsSubmittingAction, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=false}"/>
-                                <Button Content="Pass to Board"
+                                        IsEnabled="{Binding IsSubmittingAction, Converter={StaticResource InverseBoolConverter}}"/>
+                                <Button Content="→ Pass to Board"
                                         Command="{Binding SubmitPassToBoardCommand}"
                                         Background="#2980b9"
                                         Padding="12,6"
                                         Margin="0,0,7,0"
                                         Visibility="{Binding IsPassToBoardMode, Converter={StaticResource BoolToVisibilityConverter}}"
-                                        IsEnabled="{Binding IsSubmittingAction, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=false}"/>
-                                <Button Content="Cancel Series"
+                                        IsEnabled="{Binding IsSubmittingAction, Converter={StaticResource InverseBoolConverter}}"/>
+                                <Button Content="✕ Cancel Series"
                                         Command="{Binding SubmitCancelCommand}"
                                         Background="#e74c3c"
                                         Padding="12,6"
                                         Margin="0,0,7,0"
                                         Visibility="{Binding IsCancelMode, Converter={StaticResource BoolToVisibilityConverter}}"
-                                        IsEnabled="{Binding IsSubmittingAction, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=false}"/>
+                                        IsEnabled="{Binding IsSubmittingAction, Converter={StaticResource InverseBoolConverter}}"/>
                             </StackPanel>
 
                             <TextBlock Text="Processing..."

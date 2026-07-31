@@ -92,6 +92,10 @@ public partial class EditorDashboardViewModel : ObservableObject
     public EditorDashboardViewModel(EditorApiClient editorApi)
     {
         _editorApi = editorApi;
+
+        // Auto-load dashboard data when the ViewModel is created
+        // (no need to click Refresh on first visit).
+        LoadDashboardCommand.Execute(null);
     }
 
     // ── Commands ──

@@ -1,6 +1,7 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using MangaManagementSystem.WpfMini.Models;
 
 namespace MangaManagementSystem.WpfMini.ViewModels.Workspaces;
 
@@ -34,8 +35,30 @@ public partial class EditorWorkspaceViewModel : ObservableObject
     {
         ClearNavigationState();
         IsOnDashboard = true;
-        CurrentContentViewModel = _serviceProvider
+
+        var dashboardVm = _serviceProvider
             .GetRequiredService<EditorDashboardViewModel>();
+
+        // Wire the "→ Review" click on claimed proposals to navigate
+        // directly to the Proposal Review tab with the item pre-selected.
+        dashboardVm.NavigateToProposalReview += OnDashboardNavigateToProposalReview;
+
+        CurrentContentViewModel = dashboardVm;
+    }
+
+    private async void OnDashboardNavigateToProposalReview(ProposalQueueItem item)
+    {
+        ClearNavigationState();
+        IsOnProposalReview = true;
+
+        var reviewVm = _serviceProvider
+            .GetRequiredService<EditorProposalReviewViewModel>();
+
+        CurrentContentViewModel = reviewVm;
+
+        // Load the queue and auto-select the specific proposal (awaited so
+        // the ListBox binding finds the correct item instance in the queue).
+        await reviewVm.InitializeWithProposalAsync(item.SeriesProposalId);
     }
 
     [RelayCommand]
