@@ -39,7 +39,9 @@ public class ApiClientBase
         _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
-    public async Task<T?> GetAsync<T>(string url)
+    public async Task<T?> GetAsync<T>(
+        string url,
+        CancellationToken cancellationToken = default)
     {
         var response = await _httpClient.GetAsync(url, cancellationToken);
         await EnsureSuccessAsync(response);
