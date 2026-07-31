@@ -6,36 +6,36 @@
              mc:Ignorable="d"
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid Background="#f0f2f5">
-        <Border Width="400" Padding="30" CornerRadius="8"
+        <Border Width="360" Padding="22" CornerRadius="6"
                 Background="White" BorderBrush="#ccc" BorderThickness="1"
                 HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="Manga Management" FontSize="22" FontWeight="Bold"
+                <TextBlock Text="Manga Management" FontSize="20" FontWeight="Bold"
                            TextAlignment="Center" Margin="0,0,0,5"/>
                 <TextBlock Text="WPF Mini Client" FontSize="14" Foreground="#666"
-                           TextAlignment="Center" Margin="0,0,0,20"/>
+                           TextAlignment="Center" Margin="0,0,0,14"/>
 
                 <TextBlock Text="Username" Margin="0,0,0,4"/>
                 <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
-                         Padding="8" Margin="0,0,0,10"/>
+                         Padding="7" Margin="0,0,0,8"/>
 
                 <TextBlock Text="Password" Margin="0,0,0,4"/>
-                <PasswordBox x:Name="PasswordBox" Padding="8" Margin="0,0,0,10"/>
+                <PasswordBox x:Name="PasswordBox" Padding="7" Margin="0,0,0,8"/>
 
                 <Button Content="Login" Command="{Binding LoginCommand}"
-                        Padding="8" Margin="0,0,0,10" Height="36"
+                        Padding="8" Margin="0,0,0,8" Height="34"
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBoolConverter}}"/>
 
                 <TextBlock Text="{Binding ErrorMessage}" Foreground="Red"
-                           TextWrapping="Wrap" Margin="0,0,0,10"/>
+                           TextWrapping="Wrap" Margin="0,0,0,8"/>
 
                 <Separator Margin="0,5"/>
 
                 <Button Content="Load Test Users" Command="{Binding LoadTestUsersCommand}"
-                        Margin="0,5" Padding="8"
+                        Margin="0,4" Padding="8"
                         IsEnabled="{Binding IsLoading, Converter={StaticResource InverseBoolConverter}}"/>
 
-                <ItemsControl ItemsSource="{Binding TestUsers}" Margin="0,5">
+                <ItemsControl ItemsSource="{Binding TestUsers}" Margin="0,4">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Content="{Binding DisplayName}" Margin="0,2"

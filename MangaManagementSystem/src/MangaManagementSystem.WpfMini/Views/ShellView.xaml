@@ -14,13 +14,11 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-
         <!-- Shared application header -->
 
         <Border Grid.Row="0"
                 Background="#2c3e50"
                 Padding="15,10">
-
             <Grid>
 
                 <Grid.ColumnDefinitions>
@@ -55,7 +53,6 @@
                         <TextBlock Text="{Binding Session.RoleCode}"
                                    Foreground="#95a5a6"
                                    FontSize="12"/>
-
                     </Border>
 
                 </StackPanel>
@@ -71,7 +68,6 @@
                             BorderThickness="0"
                             Padding="12,6"
                             Cursor="Hand"/>
-
                 </Border>
 
             </Grid>
@@ -83,7 +79,6 @@
 
         <ContentControl Grid.Row="1"
                         Content="{Binding CurrentWorkspaceViewModel}"/>
-
     </Grid>
 
 </UserControl>
