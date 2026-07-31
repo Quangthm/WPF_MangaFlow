@@ -96,14 +96,13 @@
                     <Style TargetType="ListBoxItem">
                         <Setter Property="Padding" Value="0"/>
                         <Setter Property="Margin" Value="0,0,0,8"/>
-                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
                         <Setter Property="Background" Value="Transparent"/>
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
                                     <Border x:Name="Border" Background="{TemplateBinding Background}"
                                             CornerRadius="6" Padding="0" BorderThickness="0">
-                                        <ContentPresenter/>
+                                        <ContentPresenter HorizontalAlignment="Stretch"/>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsSelected" Value="True">
@@ -264,8 +263,8 @@
                                 <StackPanel>
                                     <TextBlock Text="Page Preview" FontSize="12" FontWeight="Bold"
                                                Foreground="#555" Margin="0,0,0,6"/>
-                                    <Image Source="{Binding SelectedPageImageUrl}" MaxHeight="300"
-                                           Stretch="Uniform"/>
+                                    <Image Source="{Binding SelectedPageImageUrl, Converter={StaticResource StringToImageSourceConverter}}" MaxHeight="300"
+                                            Stretch="Uniform"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
