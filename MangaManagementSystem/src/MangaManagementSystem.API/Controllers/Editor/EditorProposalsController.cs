@@ -49,9 +49,16 @@ namespace MangaManagementSystem.API.Controllers.Editor
         [HttpGet]
         public async Task<IActionResult> GetQueueAsync(
             [FromQuery(Name = "status")] string? status,
+            [FromQuery(Name = "claimedByMe")] bool? claimedByMe,
             CancellationToken cancellationToken)
         {
-            var query = new GetEditorialProposalQueueQuery(status);
+            if (!TryResolveActorUserId(out Guid actorUserId))
+            {
+                return BadRequest(new ApiErrorResponse(
+                    "Could not identify the requesting user. Please sign in again."));
+            }
+
+            var query = new GetEditorialProposalQueueQuery(status, actorUserId, claimedByMe ?? false);
 
             try
             {

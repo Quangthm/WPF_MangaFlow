@@ -47,6 +47,10 @@ public class StatusToBrushConverter : System.Windows.Data.IValueConverter
                 color = "#27ae60"; // Green
                 break;
 
+            case "SCHEDULED":
+                color = "#2980b9"; // Blue
+                break;
+
             case "CANCELLED":
                 color = "#e74c3c"; // Red
                 break;

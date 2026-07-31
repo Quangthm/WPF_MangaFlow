@@ -26,6 +26,7 @@ namespace MangaManagementSystem.Domain.Interfaces
         int ChaptersUnderReviewCount,
         int PendingAnnotationCount,
         int SerializedSeriesCount,
+        int CompletedProposalCount,
         IReadOnlyList<SeriesProposal> ProposalReviewQueue,
         IReadOnlyList<Series> RecentSeriesActivity);
 }

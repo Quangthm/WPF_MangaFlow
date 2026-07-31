@@ -147,11 +147,19 @@
                                     <Run Text="{Binding SubmitterDisplayName}" FontWeight="SemiBold"/>
                                 </TextBlock>
 
-                                <TextBlock Text="{Binding ProposalFileName}"
-                                           FontSize="11"
-                                           Foreground="#95a5a6"
-                                           TextTrimming="CharacterEllipsis"
-                                           Margin="0,3,0,0"/>
+                                <!-- Date + File -->
+                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                    <TextBlock Text="{Binding SubmittedAtDisplay}" FontSize="11"
+                                               Foreground="#95a5a6"/>
+                                    <TextBlock Text="{Binding ProposalFileName, StringFormat=' · {0}'}"
+                                               FontSize="11" Foreground="#95a5a6" Margin="4,0,0,0"/>
+                                </StackPanel>
+
+                                <!-- Comments preview (if revision requested) -->
+                                <TextBlock Text="{Binding Comments}" FontSize="11" Foreground="#e67e22"
+                                           TextTrimming="CharacterEllipsis" MaxHeight="20"
+                                           Margin="0,4,0,0" FontStyle="Italic"
+                                           Visibility="{Binding Comments, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </StackPanel>
                         </Border>
                     </DataTemplate>

@@ -5,8 +5,8 @@ using MangaManagementSystem.WpfMini.Models;
 namespace MangaManagementSystem.WpfMini.Services;
 
 /// <summary>
-/// API client cho Editor workflows.
-/// Gọi các endpoint /api/wpf/editor/* (sẽ tạo sau).
+/// API client for Editor workflows. Calls /api/editor/* endpoints directly.
+/// Automatically includes the X-Actor-User-Id header for every request.
 /// </summary>
 public class EditorApiClient
 {
@@ -17,31 +17,64 @@ public class EditorApiClient
         _api = api;
     }
 
+    // ── Dashboard ───────────────────────────────────────────────
+
     /// <summary>
-    /// Lấy queue proposal cần review.
-    /// GET /api/wpf/editor/proposals/queue?status={status}
+    /// Gets the editor dashboard read model (KPIs + proposal queue + series activity).
+    /// GET /api/editor/dashboard
     /// </summary>
-    public Task<List<ProposalQueueItem>?> GetProposalQueueAsync(string? status = null)
+    public Task<EditorDashboardDto?> GetDashboardAsync()
     {
-        var url = "/api/wpf/editor/proposals/queue";
+        return _api.GetAsync<EditorDashboardDto>("/api/editor/dashboard");
+    }
+
+    // ── Proposals (Queue, Detail, Claim) ────────────────────────
+
+    /// <summary>
+    /// Gets the editorial proposal queue, optionally filtered by status or claimed-by-me.
+    /// GET /api/editor/proposals?status={status}&claimedByMe={claimedByMe}
+    /// </summary>
+    public Task<List<ProposalQueueItem>?> GetProposalQueueAsync(
+        string? status = null, bool? claimedByMe = null)
+    {
+        var url = "/api/editor/proposals";
+        var queryParams = new List<string>();
+
         if (!string.IsNullOrEmpty(status))
-            url += $"?status={status}";
+            queryParams.Add($"status={status}");
+
+        if (claimedByMe == true)
+            queryParams.Add("claimedByMe=true");
+
+        if (queryParams.Count > 0)
+            url += "?" + string.Join("&", queryParams);
 
         return _api.GetAsync<List<ProposalQueueItem>>(url);
     }
 
     /// <summary>
-    /// Lấy chi tiết proposal.
-    /// GET /api/wpf/editor/proposals/{proposalId}
+    /// Gets a single proposal's detail with permission flags.
+    /// GET /api/editor/proposals/{proposalId}
     /// </summary>
     public Task<ProposalDetail?> GetProposalDetailAsync(Guid proposalId)
     {
-        return _api.GetAsync<ProposalDetail>($"/api/wpf/editor/proposals/{proposalId}");
+        return _api.GetAsync<ProposalDetail>($"/api/editor/proposals/{proposalId}");
+    }
+
+    /// <summary>
+    /// Claims a proposal for editorial review.
+    /// POST /api/editor/proposals/{proposalId}/claims
+    /// </summary>
+    public Task<EditorReviewActionResult?> ClaimProposalAsync(Guid proposalId, string? notes = null)
+    {
+        var body = new { notes };
+        return _api.PostAsync<object, EditorReviewActionResult>(
+            $"/api/editor/proposals/{proposalId}/claims", body);
     }
 
     /// <summary>
     /// Request Revision — comments required, markup optional.
-    /// POST /api/wpf/editor/proposals/{proposalId}/request-revision
+    /// POST /api/editor/proposals/{proposalId}/revision-requests
     /// </summary>
     public async Task<EditorReviewActionResult?> RequestRevisionAsync(
         Guid proposalId, string comments, string? markupFilePath = null)
@@ -61,12 +94,12 @@ public class EditorApiClient
         }
 
         return await _api.PostFormAsync<EditorReviewActionResult>(
-            $"/api/wpf/editor/proposals/{proposalId}/request-revision", form);
+            $"/api/editor/proposals/{proposalId}/revision-requests", form);
     }
 
     /// <summary>
     /// Pass to Board — comments and markup optional.
-    /// POST /api/wpf/editor/proposals/{proposalId}/pass-to-board
+    /// POST /api/editor/proposals/{proposalId}/board-submissions
     /// </summary>
     public async Task<EditorReviewActionResult?> PassToBoardAsync(
         Guid proposalId, string? comments = null, string? markupFilePath = null)
@@ -86,12 +119,12 @@ public class EditorApiClient
         }
 
         return await _api.PostFormAsync<EditorReviewActionResult>(
-            $"/api/wpf/editor/proposals/{proposalId}/pass-to-board", form);
+            $"/api/editor/proposals/{proposalId}/board-submissions", form);
     }
 
     /// <summary>
     /// Cancel proposal — comments + markup required.
-    /// POST /api/wpf/editor/proposals/{proposalId}/cancel
+    /// POST /api/editor/proposals/{proposalId}/cancellations
     /// </summary>
     public async Task<EditorReviewActionResult?> CancelProposalAsync(
         Guid proposalId, string comments, string markupFilePath)
@@ -111,8 +144,81 @@ public class EditorApiClient
         }
 
         return await _api.PostFormAsync<EditorReviewActionResult>(
-            $"/api/wpf/editor/proposals/{proposalId}/cancel", form);
+            $"/api/editor/proposals/{proposalId}/cancellations", form);
     }
+
+    // ── Chapter Review ──────────────────────────────────────────
+
+    /// <summary>
+    /// Gets the chapter review queue (KPIs + chapter list), scoped to the editor's series.
+    /// GET /api/editor/chapters/review-queue?status={status}
+    /// </summary>
+    public Task<EditorChapterReviewQueueDto?> GetChapterReviewQueueAsync(string? status = null)
+    {
+        var url = "/api/editor/chapters/review-queue";
+        if (!string.IsNullOrEmpty(status))
+            url += $"?status={status}";
+
+        return _api.GetAsync<EditorChapterReviewQueueDto>(url);
+    }
+
+    /// <summary>
+    /// Gets the scoped review detail for one chapter (pages + annotations).
+    /// GET /api/editor/chapters/{chapterId}/review-detail
+    /// </summary>
+    public Task<EditorChapterReviewDetailDto?> GetChapterReviewDetailAsync(Guid chapterId)
+    {
+        return _api.GetAsync<EditorChapterReviewDetailDto>(
+            $"/api/editor/chapters/{chapterId}/review-detail");
+    }
+
+    /// <summary>
+    /// Approves a chapter under review.
+    /// POST /api/editor/chapters/{chapterId}/approve
+    /// </summary>
+    public Task<EditorChapterReviewActionResult?> ApproveChapterAsync(
+        Guid chapterId, string? feedback = null)
+    {
+        var body = new { feedback };
+        return _api.PostAsync<object, EditorChapterReviewActionResult>(
+            $"/api/editor/chapters/{chapterId}/approve", body);
+    }
+
+    /// <summary>
+    /// Rejects / requests revision for a chapter.
+    /// POST /api/editor/chapters/{chapterId}/reject
+    /// </summary>
+    public Task<EditorChapterReviewActionResult?> RejectChapterAsync(
+        Guid chapterId, string feedback)
+    {
+        var body = new { feedback };
+        return _api.PostAsync<object, EditorChapterReviewActionResult>(
+            $"/api/editor/chapters/{chapterId}/reject", body);
+    }
+
+    /// <summary>
+    /// Puts a chapter on hold.
+    /// POST /api/editor/chapters/{chapterId}/hold
+    /// </summary>
+    public Task<EditorChapterReviewActionResult?> PutChapterOnHoldAsync(
+        Guid chapterId, string? reason = null)
+    {
+        var body = new { feedback = reason };
+        return _api.PostAsync<object, EditorChapterReviewActionResult>(
+            $"/api/editor/chapters/{chapterId}/hold", body);
+    }
+
+    /// <summary>
+    /// Publishes a scheduled/approved chapter.
+    /// POST /api/editor/chapters/{chapterId}/publish
+    /// </summary>
+    public Task<EditorChapterReviewActionResult?> PublishChapterAsync(Guid chapterId)
+    {
+        return _api.PostAsync<object, EditorChapterReviewActionResult>(
+            $"/api/editor/chapters/{chapterId}/publish", new { });
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────
 
     private static string GetMimeType(string filePath)
     {

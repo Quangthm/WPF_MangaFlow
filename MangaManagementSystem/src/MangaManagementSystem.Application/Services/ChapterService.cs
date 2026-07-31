@@ -37,7 +37,24 @@ namespace MangaManagementSystem.Application.Services
             var entity = await _unitOfWork.Chapters.GetByIdAsync(id);
             return entity == null ? null : MapToDto(entity);
         }
+        public async Task EnsureChapterAllowsContentMutationsAsync(Guid chapterId)
+        {
+            var entity = await _unitOfWork.Chapters.GetByIdAsync(chapterId);
+            if (entity == null)
+                throw new InvalidOperationException("Chapter does not exist.");
 
+            var blockedStatuses = new[]
+            {
+                "UNDER_REVIEW", "APPROVED", "SCHEDULED",
+                "ON_HOLD", "RELEASED", "CANCELLED"
+            };
+
+            if (blockedStatuses.Contains(entity.StatusCode))
+                throw new InvalidOperationException(
+                    "This chapter is locked for content changes. " +
+                    "Content editing is blocked while the chapter is UNDER_REVIEW, APPROVED, SCHEDULED, " +
+                    "ON_HOLD, RELEASED, or CANCELLED.");
+        }
         public async Task<IEnumerable<ChapterDto>> GetChaptersBySeriesIdAsync(Guid seriesId)
         {
             var all = await _unitOfWork.Chapters.GetAllAsync();

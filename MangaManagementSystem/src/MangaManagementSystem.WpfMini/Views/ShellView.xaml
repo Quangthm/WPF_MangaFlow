@@ -1,154 +1,84 @@
 <UserControl x:Class="MangaManagementSystem.WpfMini.Views.ShellView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="650" d:DesignWidth="900">
+             d:DesignHeight="650"
+             d:DesignWidth="900">
+
     <Grid>
+
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- ═══ Header ═══ -->
-        <Border Grid.Row="0" Background="#2c3e50" Padding="12,8">
+        <!-- Shared application header -->
+
+        <Border Grid.Row="0"
+                Background="#2c3e50"
+                Padding="15,10">
             <Grid>
+
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <TextBlock Text="MangaFlow" FontWeight="Bold"
-                               Foreground="White" FontSize="17" VerticalAlignment="Center"/>
-                    <Rectangle Width="1" Fill="#34495e" Margin="10,4"/>
-                    <TextBlock Text="{Binding Session.DisplayName}" FontWeight="Bold"
-                               Foreground="White" FontSize="14" VerticalAlignment="Center"/>
-                    <Border Background="#34495e" CornerRadius="4" Padding="7,2" Margin="8,0">
-                        <TextBlock Text="{Binding Session.RoleCode}" 
-                                   Foreground="#95a5a6" FontSize="12"/>
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal">
+
+                    <TextBlock Text="MangaFlow"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               FontSize="18"
+                               VerticalAlignment="Center"/>
+
+                    <Rectangle Width="1"
+                               Fill="#34495e"
+                               Margin="12,4"/>
+
+                    <TextBlock Text="{Binding Session.DisplayName}"
+                               FontWeight="Bold"
+                               Foreground="White"
+                               FontSize="16"
+                               VerticalAlignment="Center"/>
+
+                    <Border Background="#34495e"
+                            CornerRadius="4"
+                            Padding="8,2"
+                            Margin="8,0">
+
+                        <TextBlock Text="{Binding Session.RoleCode}"
+                                   Foreground="#95a5a6"
+                                   FontSize="12"/>
                     </Border>
+
                 </StackPanel>
 
-                <Border Grid.Column="1" CornerRadius="4" Background="#e74c3c">
-                    <Button Content="Logout" Command="{Binding LogoutCommand}"
-                            Foreground="White" Background="Transparent"
-                            BorderThickness="0" Padding="10,5" Cursor="Hand"/>
+                <Border Grid.Column="1"
+                        CornerRadius="4"
+                        Background="#e74c3c">
+
+                    <Button Content="Logout"
+                            Command="{Binding LogoutCommand}"
+                            Foreground="White"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Padding="12,6"
+                            Cursor="Hand"/>
                 </Border>
+
             </Grid>
+
         </Border>
 
-        <!-- ═══ Body: Sidebar + Content ═══ -->
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
 
-            <!-- ═══ Sidebar ═══ -->
-            <Border Grid.Column="0" Width="190" Background="#34495e">
-                <StackPanel Margin="0,6">
-                    <!-- Mangaka section -->
-                    <TextBlock Text="MANGAKA"
-                               Foreground="#7f8c8d"
-                               FontSize="11"
-                               FontWeight="Bold"
-                               Margin="12,8,12,4"
-                               Visibility="{Binding IsMangaka, Converter={StaticResource BoolToVisibilityConverter}}"/>
+        <!-- Role-specific workspace -->
 
-                    <RadioButton Content="My Series"
-                                 IsChecked="{Binding IsOnMangakaSeries}"
-                                 Command="{Binding NavigateToMangakaSeriesCommand}"
-                                 Foreground="White"
-                                 Background="Transparent"
-                                 BorderThickness="0"
-                                 Padding="12,7"
-                                 Margin="0,2"
-                                 FontSize="14"
-                                 Cursor="Hand"
-                                 Visibility="{Binding IsMangaka, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                    <!-- Section: Editor -->
-                    <TextBlock Text="EDITOR" Foreground="#7f8c8d" FontSize="11"
-                               FontWeight="Bold" Margin="12,8,12,4" 
-                               Visibility="{Binding IsEditor, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                    <RadioButton Content="📋 Proposal Review"
-                                 IsChecked="{Binding IsOnProposalReview}"
-                                 Command="{Binding NavigateToProposalReviewCommand}"
-                                 Foreground="White" Background="Transparent"
-                                 BorderThickness="0" Padding="12,7" Margin="0,2"
-                                 FontSize="14" Cursor="Hand"
-                                 Visibility="{Binding IsEditor, Converter={StaticResource BoolToVisibilityConverter}}">
-                        
-                        <RadioButton.Resources>
-                            <Style TargetType="RadioButton">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="RadioButton">
-                                            <Border x:Name="Border" Background="Transparent"
-                                                    Padding="{TemplateBinding Padding}"
-                                                    BorderThickness="0">
-                                                <ContentPresenter/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsChecked" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#2980b9"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#2c3e50"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </RadioButton.Resources>
-                    </RadioButton>
-
-                    <!-- Section: Board -->
-                    <TextBlock Text="BOARD" Foreground="#7f8c8d" FontSize="11"
-                               FontWeight="Bold" Margin="12,10,12,4"
-                               Visibility="{Binding IsBoardRole, Converter={StaticResource BoolToVisibilityConverter}}"/>
-
-                    <RadioButton Content="🗳️ Board Polls"
-                                 IsChecked="{Binding IsOnBoardPolls}"
-                                 Command="{Binding NavigateToBoardPollsCommand}"
-                                 Foreground="White" Background="Transparent"
-                                 BorderThickness="0" Padding="12,7" Margin="0,2"
-                                 FontSize="14" Cursor="Hand"
-                                 Visibility="{Binding IsBoardRole, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <RadioButton.Resources>
-                            <Style TargetType="RadioButton">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate TargetType="RadioButton">
-                                            <Border x:Name="Border" Background="Transparent"
-                                                    Padding="{TemplateBinding Padding}"
-                                                    BorderThickness="0">
-                                                <ContentPresenter/>
-                                            </Border>
-                                            <ControlTemplate.Triggers>
-                                                <Trigger Property="IsChecked" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#2980b9"/>
-                                                </Trigger>
-                                                <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter TargetName="Border" Property="Background" Value="#2c3e50"/>
-                                                </Trigger>
-                                            </ControlTemplate.Triggers>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Style>
-                        </RadioButton.Resources>
-                    </RadioButton>
-                </StackPanel>
-            </Border>
-
-            <!-- ═══ Main Content Area ═══ -->
-            <Border Grid.Column="1" Background="#ecf0f1">
-                <ContentControl Content="{Binding CurrentContentViewModel}"/>
-            </Border>
-        </Grid>
+        <ContentControl Grid.Row="1"
+                        Content="{Binding CurrentWorkspaceViewModel}"/>
     </Grid>
+
 </UserControl>

@@ -1,0 +1,62 @@
+﻿<UserControl x:Class="MangaManagementSystem.WpfMini.Views.Workspaces.BoardWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="600"
+             d:DesignWidth="900">
+
+    <Grid>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+
+        <!-- Board sidebar -->
+
+        <Border Grid.Column="0"
+                Background="#34495e">
+
+            <StackPanel Margin="0,10">
+
+                <TextBlock Text="BOARD"
+                           Foreground="#7f8c8d"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           Margin="15,10,15,5"/>
+
+                <RadioButton Content="Board Polls"
+                             IsChecked="{Binding IsOnBoardPolls}"
+                             Command="{Binding NavigateToBoardPollsCommand}"
+                             Foreground="White"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="15,8"
+                             Margin="0,2"
+                             FontSize="14"
+                             Cursor="Hand"/>
+
+            </StackPanel>
+
+        </Border>
+
+
+        <!-- Board content -->
+
+        <Border Grid.Column="1"
+                Background="#ecf0f1">
+
+            <TextBlock Text="Board Polls UI has not been connected yet."
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"
+                       Foreground="#7f8c8d"
+                       FontSize="16"/>
+
+        </Border>
+
+    </Grid>
+
+</UserControl>

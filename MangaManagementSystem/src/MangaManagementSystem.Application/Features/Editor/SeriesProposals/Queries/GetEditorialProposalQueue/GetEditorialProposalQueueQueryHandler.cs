@@ -37,10 +37,24 @@ namespace MangaManagementSystem.Application.Features.Editor.SeriesProposals.Quer
                 reviewedByUserId: null,
                 cancellationToken);
 
-            return proposals.Select(MapToDto).ToList();
+            // Batch compute claim flags
+            var seriesIds = proposals.Select(p => p.SeriesId).Distinct().ToList();
+            var claimedSeriesIds = seriesIds.Count > 0
+                ? await _seriesProposalRepository.GetActiveTantouEditorSeriesIdsAsync(
+                    request.ActorUserId, seriesIds, cancellationToken)
+                : new HashSet<Guid>();
+
+            var result = proposals.Select(p => MapToDto(p, claimedSeriesIds)).ToList();
+
+            if (request.ClaimedByMe)
+            {
+                result = result.Where(dto => dto.IsClaimedByCurrentEditor).ToList();
+            }
+
+            return result;
         }
 
-        private static ProposalQueueItemDto MapToDto(SeriesProposal p) => new(
+        private static ProposalQueueItemDto MapToDto(SeriesProposal p, HashSet<Guid> claimedSeriesIds) => new(
             p.SeriesProposalId,
             p.SeriesId,
             p.Series?.Title ?? string.Empty,
@@ -62,7 +76,9 @@ namespace MangaManagementSystem.Application.Features.Editor.SeriesProposals.Quer
             p.ProposalFile?.CloudinarySecureUrl,
             p.ProposalFile?.OriginalFileName,
             p.MarkupFileId,
-            p.MarkupFile?.CloudinarySecureUrl);
+            p.MarkupFile?.CloudinarySecureUrl,
+            claimedSeriesIds.Contains(p.SeriesId),
+            p.StatusCode == "UNDER_EDITORIAL_REVIEW" && !claimedSeriesIds.Contains(p.SeriesId));
 
         private static IReadOnlyList<GenreDto> MapGenres(IEnumerable<Domain.Entities.Genre>? genres)
         {

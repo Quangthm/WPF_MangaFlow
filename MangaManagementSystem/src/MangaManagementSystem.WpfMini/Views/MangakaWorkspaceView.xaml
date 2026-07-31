@@ -1,0 +1,72 @@
+﻿<UserControl x:Class="MangaManagementSystem.WpfMini.Views.Workspaces.MangakaWorkspaceView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignHeight="600"
+             d:DesignWidth="900">
+
+    <Grid>
+
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+
+        <!-- Mangaka sidebar -->
+
+        <Border Grid.Column="0"
+                Background="#34495e">
+
+            <StackPanel Margin="0,10">
+
+                <TextBlock Text="MANGAKA"
+                           Foreground="#7f8c8d"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           Margin="15,10,15,5"/>
+
+                <RadioButton Content="My Series"
+                             IsChecked="{Binding IsOnSeries}"
+                             Command="{Binding NavigateToSeriesCommand}"
+                             Foreground="White"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="15,8"
+                             Margin="0,2"
+                             FontSize="14"
+                             Cursor="Hand"/>
+                <RadioButton
+                    Content="Chapters"
+                    GroupName="MangakaNavigation"
+                    IsChecked="{Binding IsOnChapters, Mode=OneWay}"
+                    Command="{Binding NavigateToChaptersCommand}"
+                    ToolTip="Open the chapter list for the currently selected series"
+                    Foreground="White"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Padding="15,8"
+                    Margin="0,2"
+                    FontSize="14"
+                    Cursor="Hand"/>
+                <!-- Add Mangaka Chapter navigation here later. -->
+
+            </StackPanel>
+
+        </Border>
+
+
+        <!-- Mangaka page content -->
+
+        <Border Grid.Column="1"
+                Background="#ecf0f1">
+
+            <ContentControl Content="{Binding CurrentContentViewModel}"/>
+
+        </Border>
+
+    </Grid>
+
+</UserControl>

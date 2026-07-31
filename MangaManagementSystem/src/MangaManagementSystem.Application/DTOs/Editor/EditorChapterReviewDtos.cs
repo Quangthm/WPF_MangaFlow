@@ -82,4 +82,12 @@ namespace MangaManagementSystem.Application.DTOs.Editor
         DateTime CreatedAtUtc,
         string? CreatedByDisplayName,
         bool IsResolved);
+
+    /// <summary>
+    /// Result of an editorial chapter review action. Returns the chapter's resulting status code so
+    /// the UI can refresh and confirm the transition.
+    /// </summary>
+    public sealed record EditorChapterReviewActionResultDto(
+        Guid ChapterId,
+        string StatusCode);
 }
