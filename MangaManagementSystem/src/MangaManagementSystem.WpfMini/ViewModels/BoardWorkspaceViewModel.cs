@@ -11,25 +11,39 @@ namespace MangaManagementSystem.WpfMini.ViewModels.Workspaces;
 public partial class BoardWorkspaceViewModel : ObservableObject
 {
     private readonly BoardApiClient _boardApi;
+    private readonly MainWindowViewModel _mainWindowViewModel;
 
-    public bool IsChief { get; }
-    public bool IsMember { get; }
-    public string RoleDisplayName => IsChief
-        ? "Editorial Board Chief"
-        : "Editorial Board Member";
+    public BoardWorkspaceViewModel(
+        BoardApiClient boardApi,
+        MainWindowViewModel mainWindowViewModel)
+    {
+        _boardApi = boardApi;
+        _mainWindowViewModel = mainWindowViewModel;
 
-    public ObservableCollection<ProposalQueueItemDto> ReadyProposals { get; } = [];
-    public ObservableCollection<EditorialBoardPollDto> OpenPolls { get; } = [];
-    public ObservableCollection<EditorialBoardPollDto> PollHistory { get; } = [];
+        IsOnProposalReview = IsChief;
+        IsOnBoardPolls = !IsChief;
+    }
+
+    public bool IsChief =>
+        _mainWindowViewModel.CurrentSession?.IsBoardChief == true;
 
     public IReadOnlyList<string> PublicationFrequencies { get; } =
         ["WEEKLY", "MONTHLY", "IRREGULAR"];
 
     [ObservableProperty]
+    private ObservableCollection<ProposalQueueItemDto> _proposals = [];
+
+    [ObservableProperty]
+    private ObservableCollection<EditorialBoardPollDto> _openPolls = [];
+
+    [ObservableProperty]
+    private ObservableCollection<EditorialBoardPollDto> _pollHistory = [];
+
+    [ObservableProperty]
     private ProposalQueueItemDto? _selectedProposal;
 
     [ObservableProperty]
-    private EditorialBoardPollDto? _selectedPoll;
+    private EditorialBoardPollDto? _selectedOpenPoll;
 
     [ObservableProperty]
     private EditorialBoardPollDto? _selectedDecisionPoll;
@@ -41,19 +55,16 @@ public partial class BoardWorkspaceViewModel : ObservableObject
     private string _pollReason = string.Empty;
 
     [ObservableProperty]
-    private string _publicationFrequencyCode = "WEEKLY";
+    private string _selectedPublicationFrequency = "WEEKLY";
 
     [ObservableProperty]
     private string _voteReason = string.Empty;
 
     [ObservableProperty]
-    private bool _isBusy;
-
-    [ObservableProperty]
-    private string _errorMessage = string.Empty;
-
-    [ObservableProperty]
     private string _statusMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isBusy;
 
     [ObservableProperty]
     private bool _isOnProposalReview;
@@ -65,99 +76,56 @@ public partial class BoardWorkspaceViewModel : ObservableObject
     private bool _isOnDecisionCenter;
 
     [ObservableProperty]
-    private bool _isOnPollHistory;
-
-    [ObservableProperty]
-    private string _currentSectionTitle = "Board Polls";
-
-    [ObservableProperty]
-    private int _readyProposalCount;
-
-    [ObservableProperty]
-    private int _openPollCount;
-
-    [ObservableProperty]
-    private int _historyCount;
-
-    public BoardWorkspaceViewModel(
-        BoardApiClient boardApi,
-        MainWindowViewModel mainWindowViewModel)
-    {
-        _boardApi = boardApi;
-
-        var session = mainWindowViewModel.CurrentSession;
-        IsChief = session?.IsBoardChief == true;
-        IsMember = session?.IsBoardMember == true;
-
-        if (IsChief)
-        {
-            SetSection(BoardSection.ProposalReview);
-        }
-        else
-        {
-            SetSection(BoardSection.BoardPolls);
-        }
-
-        _ = RefreshAsync();
-    }
+    private bool _isOnHistory;
 
     [RelayCommand]
-    private void NavigateToProposalReview()
+    private async Task InitializeAsync()
     {
-        if (IsChief)
-        {
-            SetSection(BoardSection.ProposalReview);
-        }
-    }
-
-    [RelayCommand]
-    private void NavigateToBoardPolls()
-    {
-        SetSection(BoardSection.BoardPolls);
-    }
-
-    [RelayCommand]
-    private void NavigateToDecisionCenter()
-    {
-        if (IsChief)
-        {
-            SetSection(BoardSection.DecisionCenter);
-        }
-    }
-
-    [RelayCommand]
-    private void NavigateToPollHistory()
-    {
-        SetSection(BoardSection.PollHistory);
+        await RefreshAllAsync();
     }
 
     [RelayCommand]
     private async Task RefreshAsync()
     {
-        if (IsBusy)
+        await RefreshAllAsync();
+    }
+
+    [RelayCommand]
+    private async Task NavigateToProposalReviewAsync()
+    {
+        if (!IsChief)
         {
             return;
         }
 
-        IsBusy = true;
-        ClearMessages();
+        ShowOnly(proposals: true);
+        await LoadProposalsAsync();
+    }
 
-        try
+    [RelayCommand]
+    private async Task NavigateToBoardPollsAsync()
+    {
+        ShowOnly(polls: true);
+        await LoadOpenPollsAsync();
+    }
+
+    [RelayCommand]
+    private async Task NavigateToDecisionCenterAsync()
+    {
+        if (!IsChief)
         {
-            await ReloadDataAsync();
+            return;
         }
-        catch (HttpRequestException ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Could not load Editorial Board data: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+
+        ShowOnly(decisions: true);
+        await LoadOpenPollsAsync();
+    }
+
+    [RelayCommand]
+    private async Task NavigateToHistoryAsync()
+    {
+        ShowOnly(history: true);
+        await LoadHistoryAsync();
     }
 
     [RelayCommand]
@@ -165,88 +133,77 @@ public partial class BoardWorkspaceViewModel : ObservableObject
     {
         if (!IsChief)
         {
-            ErrorMessage = "Only the Editorial Board Chief can open a poll.";
+            StatusMessage = "Only the Editorial Board Chief can open a poll.";
             return;
         }
 
         if (SelectedProposal is null)
         {
-            ErrorMessage = "Select a proposal first.";
+            StatusMessage = "Select a proposal first.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(PollReason))
         {
-            ErrorMessage = "Poll reason is required.";
+            StatusMessage = "Poll reason is required.";
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(PublicationFrequencyCode))
+        await RunBusyAsync(async () =>
         {
-            ErrorMessage = "Publication frequency is required.";
-            return;
-        }
-
-        if (IsBusy)
-        {
-            return;
-        }
-
-        IsBusy = true;
-        ClearMessages();
-
-        try
-        {
-            var proposalTitle = SelectedProposal.ProposalTitle;
-
             var result = await _boardApi.OpenPollAsync(
                 SelectedProposal.SeriesProposalId,
                 PollReason.Trim(),
-                PublicationFrequencyCode);
+                SelectedPublicationFrequency);
 
-            if (result is null)
-            {
-                ErrorMessage = "The API did not return the created poll.";
-                return;
-            }
+            StatusMessage = result is null
+                ? "The poll could not be opened."
+                : $"Poll opened for {SelectedProposal.SeriesTitle}.";
 
             PollReason = string.Empty;
-            StatusMessage = $"Poll opened for '{proposalTitle}'.";
+            SelectedProposal = null;
 
-            await ReloadDataAsync();
-            SetSection(BoardSection.BoardPolls);
-            SelectedPoll = OpenPolls.FirstOrDefault(p => p.PollId == result.PollId);
-        }
-        catch (HttpRequestException ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Could not open poll: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+            await LoadOpenPollsCoreAsync();
+            await LoadProposalsCoreAsync();
+        });
     }
 
     [RelayCommand]
-    private Task VoteApproveAsync()
+    private async Task CastVoteAsync(string? choiceCode)
     {
-        return CastVoteAsync("APPROVE");
-    }
+        if (SelectedOpenPoll is null)
+        {
+            StatusMessage = "Select an open poll first.";
+            return;
+        }
 
-    [RelayCommand]
-    private Task VoteRejectAsync()
-    {
-        return CastVoteAsync("REJECT");
-    }
+        var normalizedChoice = choiceCode?.Trim().ToUpperInvariant();
+        if (normalizedChoice is not ("APPROVE" or "REJECT" or "ABSTAIN"))
+        {
+            StatusMessage = "Invalid vote choice.";
+            return;
+        }
 
-    [RelayCommand]
-    private Task VoteAbstainAsync()
-    {
-        return CastVoteAsync("ABSTAIN");
+        if (normalizedChoice == "REJECT" && string.IsNullOrWhiteSpace(VoteReason))
+        {
+            StatusMessage = "A reason is required when voting REJECT.";
+            return;
+        }
+
+        var pollId = SelectedOpenPoll.PollId;
+
+        await RunBusyAsync(async () =>
+        {
+            await _boardApi.CastVoteAsync(
+                pollId,
+                normalizedChoice,
+                string.IsNullOrWhiteSpace(VoteReason) ? null : VoteReason.Trim());
+
+            StatusMessage = $"Your vote was saved as {normalizedChoice}.";
+            VoteReason = string.Empty;
+
+            await LoadOpenPollsCoreAsync(pollId);
+        });
     }
 
     [RelayCommand]
@@ -254,55 +211,30 @@ public partial class BoardWorkspaceViewModel : ObservableObject
     {
         if (!IsChief)
         {
-            ErrorMessage = "Only the Editorial Board Chief can close a poll.";
+            StatusMessage = "Only the Editorial Board Chief can close a poll.";
             return;
         }
 
         if (SelectedDecisionPoll is null)
         {
-            ErrorMessage = "Select an open poll in Decision Center first.";
+            StatusMessage = "Select an open poll in Decision Center first.";
             return;
         }
 
-        if (IsBusy)
-        {
-            return;
-        }
+        var pollId = SelectedDecisionPoll.PollId;
 
-        IsBusy = true;
-        ClearMessages();
-
-        try
+        await RunBusyAsync(async () =>
         {
-            var pollName = SelectedDecisionPoll.PollName;
-            var result = await _boardApi.FinalizePollAsync(SelectedDecisionPoll.PollId);
+            var result = await _boardApi.FinalizeAsync(pollId);
 
-            if (result is null)
-            {
-                ErrorMessage = "The API did not return the poll result.";
-                return;
-            }
+            StatusMessage = result is null
+                ? "The poll could not be closed."
+                : $"Poll {result.PollStatusCode}. Series status: {result.SeriesStatusCode}.";
 
-            StatusMessage =
-                $"'{pollName}' finished as {result.PollStatusCode}. " +
-                $"Series status: {result.SeriesStatusCode}.";
-
-            await ReloadDataAsync();
-            SetSection(BoardSection.PollHistory);
-            SelectedHistoryPoll = PollHistory.FirstOrDefault(p => p.PollId == result.PollId);
-        }
-        catch (HttpRequestException ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Could not close poll: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+            SelectedDecisionPoll = null;
+            await LoadOpenPollsCoreAsync();
+            await LoadHistoryCoreAsync();
+        });
     }
 
     [RelayCommand]
@@ -310,186 +242,139 @@ public partial class BoardWorkspaceViewModel : ObservableObject
     {
         if (!IsChief)
         {
-            ErrorMessage = "Only the Editorial Board Chief can cancel a poll.";
+            StatusMessage = "Only the Editorial Board Chief can cancel a poll.";
             return;
         }
 
         if (SelectedDecisionPoll is null)
         {
-            ErrorMessage = "Select an open poll in Decision Center first.";
+            StatusMessage = "Select an open poll in Decision Center first.";
             return;
         }
 
+        var pollId = SelectedDecisionPoll.PollId;
+
+        await RunBusyAsync(async () =>
+        {
+            var result = await _boardApi.CancelAsync(pollId);
+
+            StatusMessage = result is null
+                ? "The poll could not be cancelled."
+                : "Poll cancelled.";
+
+            SelectedDecisionPoll = null;
+            await LoadOpenPollsCoreAsync();
+            await LoadHistoryCoreAsync();
+        });
+    }
+
+    private async Task RefreshAllAsync()
+    {
+        await RunBusyAsync(async () =>
+        {
+            await LoadOpenPollsCoreAsync();
+            await LoadHistoryCoreAsync();
+
+            if (IsChief)
+            {
+                await LoadProposalsCoreAsync();
+            }
+
+            StatusMessage = "Editorial Board data loaded.";
+        });
+    }
+
+    private async Task LoadProposalsAsync()
+    {
+        await RunBusyAsync(LoadProposalsCoreAsync);
+    }
+
+    private async Task LoadOpenPollsAsync()
+    {
+        await RunBusyAsync(() => LoadOpenPollsCoreAsync());
+    }
+
+    private async Task LoadHistoryAsync()
+    {
+        await RunBusyAsync(LoadHistoryCoreAsync);
+    }
+
+    private async Task LoadProposalsCoreAsync()
+    {
+        if (!IsChief)
+        {
+            Proposals = [];
+            return;
+        }
+
+        var proposals = await _boardApi.GetBoardReadyProposalsAsync();
+        var openSeriesIds = OpenPolls.Select(poll => poll.SeriesId).ToHashSet();
+
+        Proposals = new ObservableCollection<ProposalQueueItemDto>(
+            proposals
+                .Where(proposal =>
+                    proposal.StatusCode == "UNDER_BOARD_REVIEW" &&
+                    !openSeriesIds.Contains(proposal.SeriesId))
+                .OrderByDescending(proposal => proposal.SubmittedAtUtc));
+    }
+
+    private async Task LoadOpenPollsCoreAsync(Guid? preserveSelectedPollId = null)
+    {
+        var polls = await _boardApi.GetOpenPollsAsync();
+        OpenPolls = new ObservableCollection<EditorialBoardPollDto>(polls);
+
+        if (preserveSelectedPollId is Guid pollId)
+        {
+            SelectedOpenPoll = OpenPolls.FirstOrDefault(poll => poll.PollId == pollId);
+        }
+    }
+
+    private async Task LoadHistoryCoreAsync()
+    {
+        var history = await _boardApi.GetHistoryAsync();
+        PollHistory = new ObservableCollection<EditorialBoardPollDto>(history);
+    }
+
+    private async Task RunBusyAsync(Func<Task> action)
+    {
         if (IsBusy)
         {
             return;
         }
 
         IsBusy = true;
-        ClearMessages();
-
-        try
-        {
-            var pollName = SelectedDecisionPoll.PollName;
-            var result = await _boardApi.CancelPollAsync(SelectedDecisionPoll.PollId);
-
-            if (result is null)
-            {
-                ErrorMessage = "The API did not return the cancelled poll.";
-                return;
-            }
-
-            StatusMessage = $"Poll '{pollName}' was cancelled.";
-
-            await ReloadDataAsync();
-            SetSection(BoardSection.PollHistory);
-            SelectedHistoryPoll = PollHistory.FirstOrDefault(p => p.PollId == result.PollId);
-        }
-        catch (HttpRequestException ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Could not cancel poll: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    private async Task CastVoteAsync(string choiceCode)
-    {
-        if (SelectedPoll is null)
-        {
-            ErrorMessage = "Select an open poll first.";
-            return;
-        }
-
-        if (choiceCode == "REJECT" && string.IsNullOrWhiteSpace(VoteReason))
-        {
-            ErrorMessage = "A reject vote requires a reason.";
-            return;
-        }
-
-        if (IsBusy)
-        {
-            return;
-        }
-
-        IsBusy = true;
-        ClearMessages();
-
-        try
-        {
-            var selectedPollId = SelectedPoll.PollId;
-            var reason = choiceCode == "REJECT"
-                ? VoteReason.Trim()
-                : null;
-
-            var result = await _boardApi.CastVoteAsync(
-                selectedPollId,
-                choiceCode,
-                reason);
-
-            if (result is null)
-            {
-                ErrorMessage = "The API did not return the saved vote.";
-                return;
-            }
-
-            VoteReason = string.Empty;
-            StatusMessage = $"Your {result.ChoiceCode} vote was saved.";
-
-            await ReloadDataAsync();
-            SelectedPoll = OpenPolls.FirstOrDefault(p => p.PollId == selectedPollId);
-        }
-        catch (HttpRequestException ex)
-        {
-            ErrorMessage = ex.Message;
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"Could not save vote: {ex.Message}";
-        }
-        finally
-        {
-            IsBusy = false;
-        }
-    }
-
-    private async Task ReloadDataAsync()
-    {
-        var openPolls = await _boardApi.GetOpenPollsAsync() ?? [];
-        var history = await _boardApi.GetHistoryAsync() ?? [];
-
-        ReplaceItems(OpenPolls, openPolls);
-        ReplaceItems(PollHistory, history);
-
-        if (IsChief)
-        {
-            var proposals = await _boardApi.GetReadyProposalsAsync() ?? [];
-            var openSeriesIds = openPolls
-                .Select(p => p.SeriesId)
-                .ToHashSet();
-
-            ReplaceItems(
-                ReadyProposals,
-                proposals.Where(p => !openSeriesIds.Contains(p.SeriesId)));
-        }
-        else
-        {
-            ReadyProposals.Clear();
-        }
-
-        ReadyProposalCount = ReadyProposals.Count;
-        OpenPollCount = OpenPolls.Count;
-        HistoryCount = PollHistory.Count;
-    }
-
-    private static void ReplaceItems<T>(
-        ObservableCollection<T> target,
-        IEnumerable<T> source)
-    {
-        target.Clear();
-
-        foreach (var item in source)
-        {
-            target.Add(item);
-        }
-    }
-
-    private void SetSection(BoardSection section)
-    {
-        IsOnProposalReview = section == BoardSection.ProposalReview;
-        IsOnBoardPolls = section == BoardSection.BoardPolls;
-        IsOnDecisionCenter = section == BoardSection.DecisionCenter;
-        IsOnPollHistory = section == BoardSection.PollHistory;
-
-        CurrentSectionTitle = section switch
-        {
-            BoardSection.ProposalReview => "Proposal Review",
-            BoardSection.BoardPolls => "Board Polls",
-            BoardSection.DecisionCenter => "Decision Center",
-            BoardSection.PollHistory => "Poll History",
-            _ => "Editorial Board"
-        };
-
-        ClearMessages();
-    }
-
-    private void ClearMessages()
-    {
-        ErrorMessage = string.Empty;
         StatusMessage = string.Empty;
+
+        try
+        {
+            await action();
+        }
+        catch (HttpRequestException ex)
+        {
+            StatusMessage = ex.StatusCode == System.Net.HttpStatusCode.Unauthorized
+                ? "Unauthorized. Log out, log in again, then reopen Board Polls."
+                : ex.Message;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
-    private enum BoardSection
+    private void ShowOnly(
+        bool proposals = false,
+        bool polls = false,
+        bool decisions = false,
+        bool history = false)
     {
-        ProposalReview,
-        BoardPolls,
-        DecisionCenter,
-        PollHistory
+        IsOnProposalReview = proposals;
+        IsOnBoardPolls = polls;
+        IsOnDecisionCenter = decisions;
+        IsOnHistory = history;
+        StatusMessage = string.Empty;
     }
 }

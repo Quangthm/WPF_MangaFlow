@@ -2,7 +2,7 @@ using MangaManagementSystem.WpfMini.Models;
 
 namespace MangaManagementSystem.WpfMini.Services;
 
-public sealed class AuthApiClient
+public class AuthApiClient
 {
     private readonly ApiClientBase _api;
 
@@ -11,21 +11,17 @@ public sealed class AuthApiClient
         _api = api;
     }
 
-    public Task<LoginResponse?> LoginAsync(
-        LoginRequest request,
-        CancellationToken cancellationToken = default)
+    public Task<LoginResponse?> LoginAsync(LoginRequest request)
     {
+        // Use the main login endpoint because it returns the JWT required by EditorialBoardController.
         return _api.PostAsync<LoginRequest, LoginResponse>(
             "/api/auth/login",
-            request,
-            cancellationToken);
+            request);
     }
 
-    public Task<List<TestUserDto>?> GetTestUsersAsync(
-        CancellationToken cancellationToken = default)
+    public Task<List<TestUserDto>?> GetTestUsersAsync()
     {
         return _api.GetAsync<List<TestUserDto>>(
-            "/api/wpf/auth/test-users",
-            cancellationToken);
+            "/api/wpf/auth/test-users");
     }
 }

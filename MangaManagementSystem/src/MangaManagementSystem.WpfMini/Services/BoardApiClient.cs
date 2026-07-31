@@ -12,28 +12,35 @@ public sealed class BoardApiClient
         _api = api;
     }
 
-    public Task<List<ProposalQueueItemDto>?> GetReadyProposalsAsync(
+    public async Task<IReadOnlyList<ProposalQueueItemDto>> GetBoardReadyProposalsAsync(
         CancellationToken cancellationToken = default)
     {
-        return _api.GetAsync<List<ProposalQueueItemDto>>(
+        // Reuse the existing proposal queue endpoint instead of changing repository SQL.
+        var result = await _api.GetAsync<List<ProposalQueueItemDto>>(
             "/api/editor/proposals?status=UNDER_BOARD_REVIEW",
             cancellationToken);
+
+        return result ?? [];
     }
 
-    public Task<List<EditorialBoardPollDto>?> GetOpenPollsAsync(
+    public async Task<IReadOnlyList<EditorialBoardPollDto>> GetOpenPollsAsync(
         CancellationToken cancellationToken = default)
     {
-        return _api.GetAsync<List<EditorialBoardPollDto>>(
+        var result = await _api.GetAsync<List<EditorialBoardPollDto>>(
             "/api/editorial-board/polls/open",
             cancellationToken);
+
+        return result ?? [];
     }
 
-    public Task<List<EditorialBoardPollDto>?> GetHistoryAsync(
+    public async Task<IReadOnlyList<EditorialBoardPollDto>> GetHistoryAsync(
         CancellationToken cancellationToken = default)
     {
-        return _api.GetAsync<List<EditorialBoardPollDto>>(
+        var result = await _api.GetAsync<List<EditorialBoardPollDto>>(
             "/api/editorial-board/polls/history",
             cancellationToken);
+
+        return result ?? [];
     }
 
     public Task<OpenSeriesBoardPollResultDto?> OpenPollAsync(
@@ -42,15 +49,15 @@ public sealed class BoardApiClient
         string publicationFrequencyCode,
         CancellationToken cancellationToken = default)
     {
-        var body = new OpenPollRequest(
+        var request = new OpenPollApiRequest(
             PollTypeCode: "START_SERIALIZATION",
             PollReason: pollReason,
             PublicationFrequencyCode: publicationFrequencyCode,
             EndsAtUtc: null);
 
-        return _api.PostAsync<OpenPollRequest, OpenSeriesBoardPollResultDto>(
+        return _api.PostAsync<OpenPollApiRequest, OpenSeriesBoardPollResultDto>(
             $"/api/editorial-board/proposals/{proposalId}/polls",
-            body,
+            request,
             cancellationToken);
     }
 
@@ -60,15 +67,15 @@ public sealed class BoardApiClient
         string? voteReason,
         CancellationToken cancellationToken = default)
     {
-        var body = new CastVoteRequest(choiceCode, voteReason);
+        var request = new CastVoteApiRequest(choiceCode, voteReason);
 
-        return _api.PostAsync<CastVoteRequest, CastSeriesBoardVoteResultDto>(
+        return _api.PostAsync<CastVoteApiRequest, CastSeriesBoardVoteResultDto>(
             $"/api/editorial-board/polls/{pollId}/votes",
-            body,
+            request,
             cancellationToken);
     }
 
-    public Task<FinalizeBoardPollResultDto?> FinalizePollAsync(
+    public Task<FinalizeBoardPollResultDto?> FinalizeAsync(
         Guid pollId,
         CancellationToken cancellationToken = default)
     {
@@ -77,7 +84,7 @@ public sealed class BoardApiClient
             cancellationToken);
     }
 
-    public Task<FinalizeBoardPollResultDto?> CancelPollAsync(
+    public Task<FinalizeBoardPollResultDto?> CancelAsync(
         Guid pollId,
         CancellationToken cancellationToken = default)
     {
@@ -86,13 +93,13 @@ public sealed class BoardApiClient
             cancellationToken);
     }
 
-    private sealed record OpenPollRequest(
+    private sealed record OpenPollApiRequest(
         string PollTypeCode,
         string PollReason,
         string? PublicationFrequencyCode,
         DateTime? EndsAtUtc);
 
-    private sealed record CastVoteRequest(
+    private sealed record CastVoteApiRequest(
         string ChoiceCode,
         string? VoteReason);
 }

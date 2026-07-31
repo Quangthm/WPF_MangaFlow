@@ -4,438 +4,357 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             d:DesignHeight="650"
-             d:DesignWidth="1050">
+             d:DesignHeight="720"
+             d:DesignWidth="1200"
+             Loaded="OnLoaded">
 
-    <Grid Background="#ECF0F1">
+    <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="220"/>
+            <ColumnDefinition Width="235"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Sidebar -->
+        <!-- LEFT NAVIGATION -->
         <Border Grid.Column="0" Background="#34495E">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+            <StackPanel Margin="0,14">
+                <TextBlock Text="EDITORIAL BOARD"
+                           Foreground="#9FB3C8"
+                           FontSize="11"
+                           FontWeight="Bold"
+                           Margin="16,10,16,8"/>
 
-                <StackPanel Grid.Row="0" Margin="16,20,16,14">
-                    <TextBlock Text="EDITORIAL BOARD"
-                               Foreground="White"
-                               FontWeight="Bold"
-                               FontSize="17"/>
-                    <TextBlock Text="{Binding RoleDisplayName}"
-                               Foreground="#BDC3C7"
-                               Margin="0,5,0,0"
-                               TextWrapping="Wrap"/>
-                </StackPanel>
+                <RadioButton Content="Proposal Review"
+                             IsChecked="{Binding IsOnProposalReview}"
+                             Command="{Binding NavigateToProposalReviewCommand}"
+                             Visibility="{Binding IsChief, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Foreground="White"
+                             Padding="16,10"
+                             Margin="0,2"
+                             Cursor="Hand"/>
 
-                <StackPanel Grid.Row="1">
-                    <Button Content="Proposal Review"
-                            Command="{Binding NavigateToProposalReviewCommand}"
-                            Visibility="{Binding IsChief, Converter={StaticResource BoolToVisibilityConverter}}"
-                            HorizontalContentAlignment="Left"
-                            Margin="10,4"
-                            Background="#2C3E50"/>
+                <RadioButton Content="Board Polls"
+                             IsChecked="{Binding IsOnBoardPolls}"
+                             Command="{Binding NavigateToBoardPollsCommand}"
+                             Foreground="White"
+                             Padding="16,10"
+                             Margin="0,2"
+                             Cursor="Hand"/>
 
-                    <Button Content="Board Polls"
-                            Command="{Binding NavigateToBoardPollsCommand}"
-                            HorizontalContentAlignment="Left"
-                            Margin="10,4"
-                            Background="#2C3E50"/>
+                <RadioButton Content="Decision Center"
+                             IsChecked="{Binding IsOnDecisionCenter}"
+                             Command="{Binding NavigateToDecisionCenterCommand}"
+                             Visibility="{Binding IsChief, Converter={StaticResource BoolToVisibilityConverter}}"
+                             Foreground="White"
+                             Padding="16,10"
+                             Margin="0,2"
+                             Cursor="Hand"/>
 
-                    <Button Content="Decision Center"
-                            Command="{Binding NavigateToDecisionCenterCommand}"
-                            Visibility="{Binding IsChief, Converter={StaticResource BoolToVisibilityConverter}}"
-                            HorizontalContentAlignment="Left"
-                            Margin="10,4"
-                            Background="#2C3E50"/>
-
-                    <Button Content="Poll History"
-                            Command="{Binding NavigateToPollHistoryCommand}"
-                            HorizontalContentAlignment="Left"
-                            Margin="10,4"
-                            Background="#2C3E50"/>
-                </StackPanel>
-
-                <Button Grid.Row="2"
-                        Content="Refresh Data"
-                        Command="{Binding RefreshCommand}"
-                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                        Margin="14,10,14,18"
-                        Background="#16A085"/>
-            </Grid>
+                <RadioButton Content="Poll History"
+                             IsChecked="{Binding IsOnHistory}"
+                             Command="{Binding NavigateToHistoryCommand}"
+                             Foreground="White"
+                             Padding="16,10"
+                             Margin="0,2"
+                             Cursor="Hand"/>
+            </StackPanel>
         </Border>
 
-        <!-- Main area -->
-        <Grid Grid.Column="1" Margin="22,18">
+        <!-- CONTENT -->
+        <Grid Grid.Column="1" Background="#F3F6F8">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <Border Grid.Row="0"
+                    Background="White"
+                    BorderBrush="#DDE4EA"
+                    BorderThickness="0,0,0,1"
+                    Padding="20,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <StackPanel>
-                    <TextBlock Text="{Binding CurrentSectionTitle}"
-                               FontSize="26"
-                               FontWeight="Bold"
-                               Foreground="#2C3E50"/>
-                    <TextBlock Text="Manage proposal polls, votes and final decisions."
-                               Foreground="#7F8C8D"
-                               Margin="0,4,0,0"/>
-                </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="Editorial Board Workspace"
+                                   FontSize="22"
+                                   FontWeight="SemiBold"
+                                   Foreground="#263746"/>
+                        <TextBlock Text="Open polls, cast votes, close decisions and review history."
+                                   Foreground="#708090"
+                                   Margin="0,3,0,0"/>
+                    </StackPanel>
 
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Border Background="White" CornerRadius="6" Padding="12,7" Margin="5,0">
-                        <TextBlock>
-                            <Run Text="Ready: "/>
-                            <Run Text="{Binding ReadyProposalCount}" FontWeight="Bold"/>
-                        </TextBlock>
-                    </Border>
-                    <Border Background="White" CornerRadius="6" Padding="12,7" Margin="5,0">
-                        <TextBlock>
-                            <Run Text="Open: "/>
-                            <Run Text="{Binding OpenPollCount}" FontWeight="Bold"/>
-                        </TextBlock>
-                    </Border>
-                    <Border Background="White" CornerRadius="6" Padding="12,7" Margin="5,0">
-                        <TextBlock>
-                            <Run Text="History: "/>
-                            <Run Text="{Binding HistoryCount}" FontWeight="Bold"/>
-                        </TextBlock>
-                    </Border>
-                </StackPanel>
-            </Grid>
+                    <Button Grid.Column="1"
+                            Content="Refresh"
+                            Command="{Binding RefreshCommand}"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                            Padding="16,8"
+                            MinWidth="95"
+                            VerticalAlignment="Center"
+                            Cursor="Hand"/>
+                </Grid>
+            </Border>
 
-            <!-- Messages -->
-            <StackPanel Grid.Row="1">
-                <Border Background="#FDEDEC"
-                        BorderBrush="#E74C3C"
-                        BorderThickness="1"
-                        CornerRadius="5"
-                        Padding="10"
-                        Margin="0,0,0,10"
-                        Visibility="{Binding ErrorMessage, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="{Binding ErrorMessage}"
-                               Foreground="#C0392B"
-                               TextWrapping="Wrap"/>
-                </Border>
+            <Grid Grid.Row="1" Margin="18">
 
-                <Border Background="#E8F8F5"
-                        BorderBrush="#1ABC9C"
-                        BorderThickness="1"
-                        CornerRadius="5"
-                        Padding="10"
-                        Margin="0,0,0,10"
-                        Visibility="{Binding StatusMessage, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <TextBlock Text="{Binding StatusMessage}"
-                               Foreground="#117864"
-                               TextWrapping="Wrap"/>
-                </Border>
+                <!-- PROPOSAL REVIEW -->
+                <Grid Visibility="{Binding IsOnProposalReview, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                <ProgressBar Height="4"
-                             IsIndeterminate="True"
-                             Margin="0,0,0,10"
-                             Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"/>
-            </StackPanel>
+                    <TextBlock Text="Proposals ready for board review"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="#263746"
+                               Margin="0,0,0,10"/>
 
-            <!-- Proposal Review: Chief only -->
-            <Grid Grid.Row="2"
-                  Visibility="{Binding IsOnProposalReview, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <Border Background="White" CornerRadius="7" Padding="12">
-                    <DataGrid ItemsSource="{Binding ReadyProposals}"
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding Proposals}"
                               SelectedItem="{Binding SelectedProposal}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
                               SelectionMode="Single"
                               CanUserAddRows="False"
                               HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal">
+                              Background="White"
+                              BorderBrush="#DDE4EA">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Series" Binding="{Binding SeriesTitle}" Width="2*"/>
                             <DataGridTextColumn Header="Proposal" Binding="{Binding ProposalTitle}" Width="2*"/>
                             <DataGridTextColumn Header="Version" Binding="{Binding ProposalVersionNo}" Width="80"/>
-                            <DataGridTextColumn Header="Submitted by" Binding="{Binding SubmitterDisplayName}" Width="140"/>
-                            <DataGridTextColumn Header="Submitted"
-                                                Binding="{Binding SubmittedAtUtc, StringFormat={}{0:dd/MM/yyyy HH:mm}}"
-                                                Width="140"/>
-                            <DataGridTextColumn Header="Status" Binding="{Binding StatusCode}" Width="150"/>
+                            <DataGridTextColumn Header="Submitted by" Binding="{Binding SubmitterDisplayName}" Width="150"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding StatusCode}" Width="165"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                </Border>
 
-                <Border Grid.Row="1"
-                        Background="White"
-                        CornerRadius="7"
-                        Padding="16"
-                        Margin="0,12,0,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="220"/>
-                            <ColumnDefinition Width="150"/>
-                        </Grid.ColumnDefinitions>
+                    <Border Grid.Row="2"
+                            Background="White"
+                            BorderBrush="#DDE4EA"
+                            BorderThickness="1"
+                            CornerRadius="5"
+                            Padding="14"
+                            Margin="0,12,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0" Margin="0,0,14,0">
-                            <TextBlock Text="Poll reason" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                            <TextBox Text="{Binding PollReason, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="64"
-                                     Padding="8"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"/>
-                        </StackPanel>
+                            <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                <TextBlock Text="Poll reason" FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding PollReason, UpdateSourceTrigger=PropertyChanged}"
+                                         MinHeight="55"
+                                         TextWrapping="Wrap"
+                                         AcceptsReturn="True"
+                                         Margin="0,5,0,0"/>
+                            </StackPanel>
 
-                        <StackPanel Grid.Column="1" Margin="0,0,14,0">
-                            <TextBlock Text="Official frequency" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                            <ComboBox ItemsSource="{Binding PublicationFrequencies}"
-                                      SelectedItem="{Binding PublicationFrequencyCode}"
-                                      Height="34"
-                                      Padding="7"/>
-                            <TextBlock Text="Select a proposal above before opening."
-                                       Foreground="#7F8C8D"
-                                       FontSize="11"
-                                       TextWrapping="Wrap"
-                                       Margin="0,8,0,0"/>
-                        </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,14,0">
+                                <TextBlock Text="Official frequency" FontWeight="SemiBold"/>
+                                <ComboBox ItemsSource="{Binding PublicationFrequencies}"
+                                          SelectedItem="{Binding SelectedPublicationFrequency}"
+                                          Margin="0,5,0,0"
+                                          Height="30"/>
+                            </StackPanel>
 
-                        <Button Grid.Column="2"
-                                Content="Open Poll"
-                                Command="{Binding OpenPollCommand}"
-                                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                                Background="#27AE60"
-                                VerticalAlignment="Bottom"
-                                Height="40"/>
-                    </Grid>
-                </Border>
-            </Grid>
+                            <Button Grid.Column="2"
+                                    Content="Open Poll"
+                                    Command="{Binding OpenPollCommand}"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
+                                    Padding="18,9"
+                                    MinWidth="110"
+                                    VerticalAlignment="Bottom"
+                                    Cursor="Hand"/>
+                        </Grid>
+                    </Border>
+                </Grid>
 
-            <!-- Board Polls: Chief and Member -->
-            <Grid Grid.Row="2"
-                  Visibility="{Binding IsOnBoardPolls, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="2*"/>
-                </Grid.ColumnDefinitions>
+                <!-- BOARD POLLS -->
+                <Grid Visibility="{Binding IsOnBoardPolls, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-                <Border Grid.Column="0" Background="White" CornerRadius="7" Padding="12" Margin="0,0,12,0">
-                    <DataGrid ItemsSource="{Binding OpenPolls}"
-                              SelectedItem="{Binding SelectedPoll}"
+                    <TextBlock Text="Open board polls"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="#263746"
+                               Margin="0,0,0,10"/>
+
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding OpenPolls}"
+                              SelectedItem="{Binding SelectedOpenPoll}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
                               SelectionMode="Single"
                               CanUserAddRows="False"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal">
+                              Background="White"
+                              BorderBrush="#DDE4EA">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Series" Binding="{Binding SeriesTitle}" Width="2*"/>
-                            <DataGridTextColumn Header="Frequency" Binding="{Binding PublicationFrequencyCode}" Width="110"/>
-                            <DataGridTextColumn Header="Approve" Binding="{Binding ApproveVotes}" Width="75"/>
-                            <DataGridTextColumn Header="Reject" Binding="{Binding RejectVotes}" Width="70"/>
-                            <DataGridTextColumn Header="Abstain" Binding="{Binding AbstainVotes}" Width="75"/>
-                            <DataGridTextColumn Header="My vote" Binding="{Binding CurrentUserChoiceCode}" Width="95"/>
+                            <DataGridTextColumn Header="Poll" Binding="{Binding PollName}" Width="2*"/>
+                            <DataGridTextColumn Header="Approve" Binding="{Binding ApproveVotes}" Width="80"/>
+                            <DataGridTextColumn Header="Reject" Binding="{Binding RejectVotes}" Width="80"/>
+                            <DataGridTextColumn Header="Abstain" Binding="{Binding AbstainVotes}" Width="80"/>
+                            <DataGridTextColumn Header="My vote" Binding="{Binding CurrentUserChoiceCode}" Width="110"/>
+                            <DataGridTextColumn Header="Result" Binding="{Binding ComputedResultCode}" Width="110"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                </Border>
 
-                <Border Grid.Column="1" Background="White" CornerRadius="7" Padding="16">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <TextBlock Text="Selected poll" FontWeight="Bold" FontSize="17" Foreground="#2C3E50"/>
-                            <TextBlock Text="{Binding SelectedPoll.SeriesTitle}"
-                                       FontSize="20"
-                                       FontWeight="SemiBold"
-                                       Margin="0,10,0,3"
-                                       TextWrapping="Wrap"/>
-                            <TextBlock Text="{Binding SelectedPoll.PollReason}"
-                                       Foreground="#7F8C8D"
-                                       TextWrapping="Wrap"
-                                       Margin="0,0,0,12"/>
+                    <Border Grid.Row="2"
+                            Background="White"
+                            BorderBrush="#DDE4EA"
+                            BorderThickness="1"
+                            CornerRadius="5"
+                            Padding="14"
+                            Margin="0,12,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
 
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Background="#E8F8F5" Padding="8" Margin="0,0,4,0">
-                                    <TextBlock Text="{Binding SelectedPoll.ApproveVotes, StringFormat='Approve: {0}'}"
-                                               Foreground="#1E8449" HorizontalAlignment="Center"/>
-                                </Border>
-                                <Border Grid.Column="1" Background="#FDEDEC" Padding="8" Margin="4,0">
-                                    <TextBlock Text="{Binding SelectedPoll.RejectVotes, StringFormat='Reject: {0}'}"
-                                               Foreground="#C0392B" HorizontalAlignment="Center"/>
-                                </Border>
-                                <Border Grid.Column="2" Background="#F4F6F7" Padding="8" Margin="4,0,0,0">
-                                    <TextBlock Text="{Binding SelectedPoll.AbstainVotes, StringFormat='Abstain: {0}'}"
-                                               Foreground="#566573" HorizontalAlignment="Center"/>
-                                </Border>
-                            </Grid>
+                            <StackPanel Grid.Column="0" Margin="0,0,14,0">
+                                <TextBlock Text="Vote reason (required for REJECT)" FontWeight="SemiBold"/>
+                                <TextBox Text="{Binding VoteReason, UpdateSourceTrigger=PropertyChanged}"
+                                         Height="32"
+                                         Margin="0,5,0,0"/>
+                            </StackPanel>
 
-                            <TextBlock Text="Reject reason" FontWeight="SemiBold" Margin="0,0,0,5"/>
-                            <TextBox Text="{Binding VoteReason, UpdateSourceTrigger=PropertyChanged}"
-                                     MinHeight="72"
-                                     Padding="8"
-                                     AcceptsReturn="True"
-                                     TextWrapping="Wrap"/>
-                            <TextBlock Text="Reason is required only for REJECT. You may change your vote while the poll is open."
-                                       Foreground="#7F8C8D"
-                                       FontSize="11"
-                                       TextWrapping="Wrap"
-                                       Margin="0,6,0,12"/>
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Bottom">
+                                <Button Content="Approve"
+                                        Command="{Binding CastVoteCommand}"
+                                        CommandParameter="APPROVE"
+                                        Padding="16,8"
+                                        Margin="0,0,8,0"
+                                        Cursor="Hand"/>
+                                <Button Content="Reject"
+                                        Command="{Binding CastVoteCommand}"
+                                        CommandParameter="REJECT"
+                                        Padding="16,8"
+                                        Margin="0,0,8,0"
+                                        Cursor="Hand"/>
+                                <Button Content="Abstain"
+                                        Command="{Binding CastVoteCommand}"
+                                        CommandParameter="ABSTAIN"
+                                        Padding="16,8"
+                                        Cursor="Hand"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
 
-                            <Button Content="APPROVE"
-                                    Command="{Binding VoteApproveCommand}"
-                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                                    Background="#27AE60"
-                                    Margin="0,3"/>
-                            <Button Content="REJECT"
-                                    Command="{Binding VoteRejectCommand}"
-                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                                    Background="#C0392B"
-                                    Margin="0,3"/>
-                            <Button Content="ABSTAIN"
-                                    Command="{Binding VoteAbstainCommand}"
-                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                                    Background="#7F8C8D"
-                                    Margin="0,3"/>
-                        </StackPanel>
-                    </ScrollViewer>
-                </Border>
-            </Grid>
+                <!-- DECISION CENTER -->
+                <Grid Visibility="{Binding IsOnDecisionCenter, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
 
-            <!-- Decision Center: Chief only -->
-            <Grid Grid.Row="2"
-                  Visibility="{Binding IsOnDecisionCenter, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
+                    <TextBlock Text="Decision Center"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="#263746"
+                               Margin="0,0,0,10"/>
 
-                <Border Background="White" CornerRadius="7" Padding="12">
-                    <DataGrid ItemsSource="{Binding OpenPolls}"
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding OpenPolls}"
                               SelectedItem="{Binding SelectedDecisionPoll}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
                               SelectionMode="Single"
                               CanUserAddRows="False"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal">
+                              Background="White"
+                              BorderBrush="#DDE4EA">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Series" Binding="{Binding SeriesTitle}" Width="2*"/>
-                            <DataGridTextColumn Header="Poll reason" Binding="{Binding PollReason}" Width="3*"/>
-                            <DataGridTextColumn Header="Approve" Binding="{Binding ApproveVotes}" Width="85"/>
-                            <DataGridTextColumn Header="Reject" Binding="{Binding RejectVotes}" Width="85"/>
-                            <DataGridTextColumn Header="Abstain" Binding="{Binding AbstainVotes}" Width="85"/>
-                            <DataGridTextColumn Header="Computed" Binding="{Binding ComputedResultCode}" Width="120"/>
+                            <DataGridTextColumn Header="Poll" Binding="{Binding PollName}" Width="2*"/>
+                            <DataGridTextColumn Header="Approve" Binding="{Binding ApproveVotes}" Width="90"/>
+                            <DataGridTextColumn Header="Reject" Binding="{Binding RejectVotes}" Width="90"/>
+                            <DataGridTextColumn Header="Abstain" Binding="{Binding AbstainVotes}" Width="90"/>
+                            <DataGridTextColumn Header="Computed result" Binding="{Binding ComputedResultCode}" Width="140"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                </Border>
 
-                <Border Grid.Row="1" Background="White" CornerRadius="7" Padding="16" Margin="0,12,0,0">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="150"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding SelectedDecisionPoll.SeriesTitle}"
-                                       FontWeight="Bold"
-                                       FontSize="16"/>
-                            <TextBlock Text="Close Vote computes APPROVE/REJECT from the current votes. A tie or no votes cancels the poll."
-                                       Foreground="#7F8C8D"
-                                       TextWrapping="Wrap"
-                                       Margin="0,4,18,0"/>
-                        </StackPanel>
-
-                        <Button Grid.Column="1"
-                                Content="Close Vote"
+                    <StackPanel Grid.Row="2"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                Margin="0,12,0,0">
+                        <Button Content="Close Vote"
                                 Command="{Binding FinalizePollCommand}"
-                                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                                Background="#2980B9"
-                                Margin="5,0"/>
-
-                        <Button Grid.Column="2"
-                                Content="Cancel Vote"
+                                Padding="18,9"
+                                Margin="0,0,10,0"
+                                Cursor="Hand"/>
+                        <Button Content="Cancel Vote"
                                 Command="{Binding CancelPollCommand}"
-                                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConverter}}"
-                                Background="#C0392B"
-                                Margin="5,0"/>
-                    </Grid>
-                </Border>
-            </Grid>
+                                Padding="18,9"
+                                Cursor="Hand"/>
+                    </StackPanel>
+                </Grid>
 
-            <!-- Poll History -->
-            <Grid Grid.Row="2"
-                  Visibility="{Binding IsOnPollHistory, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="3*"/>
-                    <ColumnDefinition Width="2*"/>
-                </Grid.ColumnDefinitions>
+                <!-- HISTORY -->
+                <Grid Visibility="{Binding IsOnHistory, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
 
-                <Border Grid.Column="0" Background="White" CornerRadius="7" Padding="12" Margin="0,0,12,0">
-                    <DataGrid ItemsSource="{Binding PollHistory}"
+                    <TextBlock Text="Poll history"
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Foreground="#263746"
+                               Margin="0,0,0,10"/>
+
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding PollHistory}"
                               SelectedItem="{Binding SelectedHistoryPoll}"
                               AutoGenerateColumns="False"
                               IsReadOnly="True"
-                              SelectionMode="Single"
                               CanUserAddRows="False"
-                              HeadersVisibility="Column"
-                              GridLinesVisibility="Horizontal">
+                              Background="White"
+                              BorderBrush="#DDE4EA">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Series" Binding="{Binding SeriesTitle}" Width="2*"/>
-                            <DataGridTextColumn Header="Status" Binding="{Binding PollStatusCode}" Width="100"/>
-                            <DataGridTextColumn Header="Result" Binding="{Binding ComputedResultCode}" Width="120"/>
-                            <DataGridTextColumn Header="Votes" Binding="{Binding TotalVotes}" Width="70"/>
-                            <DataGridTextColumn Header="Ended"
-                                                Binding="{Binding EndsAtUtc, StringFormat={}{0:dd/MM/yyyy HH:mm}}"
-                                                Width="140"/>
+                            <DataGridTextColumn Header="Status" Binding="{Binding PollStatusCode}" Width="110"/>
+                            <DataGridTextColumn Header="Result" Binding="{Binding ComputedResultCode}" Width="130"/>
+                            <DataGridTextColumn Header="Approve" Binding="{Binding ApproveVotes}" Width="80"/>
+                            <DataGridTextColumn Header="Reject" Binding="{Binding RejectVotes}" Width="80"/>
+                            <DataGridTextColumn Header="Abstain" Binding="{Binding AbstainVotes}" Width="80"/>
+                            <DataGridTextColumn Header="My vote" Binding="{Binding CurrentUserChoiceCode}" Width="110"/>
+                            <DataGridTextColumn Header="Ended at" Binding="{Binding EndsAtUtc}" Width="165"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                </Border>
-
-                <Border Grid.Column="1" Background="White" CornerRadius="7" Padding="16">
-                    <StackPanel>
-                        <TextBlock Text="History detail" FontWeight="Bold" FontSize="17" Foreground="#2C3E50"/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.SeriesTitle}"
-                                   FontSize="20"
-                                   FontWeight="SemiBold"
-                                   Margin="0,12,0,4"
-                                   TextWrapping="Wrap"/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.PollReason}"
-                                   Foreground="#7F8C8D"
-                                   TextWrapping="Wrap"
-                                   Margin="0,0,0,14"/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.PollStatusCode, StringFormat='Poll status: {0}'}"
-                                   Margin="0,3"/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.ComputedResultCode, StringFormat='Result: {0}'}"
-                                   Margin="0,3"/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.CurrentUserChoiceCode, StringFormat='My vote: {0}'}"
-                                   Margin="0,3"/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.PublicationFrequencyCode, StringFormat='Frequency: {0}'}"
-                                   Margin="0,3"/>
-                        <Separator/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.ApproveVotes, StringFormat='Approve votes: {0}'}" Margin="0,3"/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.RejectVotes, StringFormat='Reject votes: {0}'}" Margin="0,3"/>
-                        <TextBlock Text="{Binding SelectedHistoryPoll.AbstainVotes, StringFormat='Abstain votes: {0}'}" Margin="0,3"/>
-                    </StackPanel>
-                </Border>
+                </Grid>
             </Grid>
+
+            <Border Grid.Row="2"
+                    Background="White"
+                    BorderBrush="#DDE4EA"
+                    BorderThickness="0,1,0,0"
+                    Padding="18,10">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Foreground="#34495E"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="  Loading..."
+                               Foreground="#7F8C8D"
+                               Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
         </Grid>
     </Grid>
 </UserControl>

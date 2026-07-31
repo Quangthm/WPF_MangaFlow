@@ -2,9 +2,9 @@ using System.Collections.ObjectModel;
 using System.Net.Http;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using MangaManagementSystem.WpfMini.Models;
 using MangaManagementSystem.WpfMini.Services;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace MangaManagementSystem.WpfMini.ViewModels;
 
@@ -61,22 +61,21 @@ public partial class LoginViewModel : ObservableObject
                 Password = Password
             });
 
-            if (response is null
-                || response.User.UserId == Guid.Empty
-                || string.IsNullOrWhiteSpace(response.AccessToken))
+            if (response is null || response.User.UserId == Guid.Empty)
             {
-                ErrorMessage = "Login failed. The server returned an invalid response.";
+                ErrorMessage = "Login failed. No valid response from server.";
                 return;
             }
 
-            MainVm.SetSession(new CurrentUserSession
+            var session = new CurrentUserSession
             {
                 UserId = response.User.UserId.ToString(),
                 Username = response.User.Username,
                 RoleCode = MapRoleNameToCode(response.RoleName),
-                AccessToken = response.AccessToken,
-                ExpiresAtUtc = response.ExpiresAtUtc
-            });
+                AccessToken = response.AccessToken
+            };
+
+            MainVm.SetSession(session);
         }
         catch (HttpRequestException ex)
         {
@@ -126,9 +125,9 @@ public partial class LoginViewModel : ObservableObject
         await LoginAsync();
     }
 
-    private static string MapRoleNameToCode(string? roleName)
+    private static string MapRoleNameToCode(string roleName)
     {
-        return roleName?.Trim() switch
+        return roleName.Trim() switch
         {
             "Tantou Editor" => "EDITOR",
             "Editorial Board Chief" => "BOARD_CHIEF",
@@ -136,9 +135,7 @@ public partial class LoginViewModel : ObservableObject
             "Mangaka" => "MANGAKA",
             "Assistant" => "ASSISTANT",
             "Admin" => "ADMIN",
-            _ => (roleName ?? string.Empty)
-                .Replace(" ", "_", StringComparison.Ordinal)
-                .ToUpperInvariant()
+            _ => roleName.Trim().Replace(" ", "_").ToUpperInvariant()
         };
     }
 }

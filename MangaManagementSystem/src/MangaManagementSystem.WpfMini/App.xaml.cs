@@ -1,4 +1,4 @@
-﻿using MangaManagementSystem.WpfMini.Interfaces;
+using MangaManagementSystem.WpfMini.Interfaces;
 using MangaManagementSystem.WpfMini.Services;
 using MangaManagementSystem.WpfMini.Services.Mangaka;
 using MangaManagementSystem.WpfMini.Services.Series;

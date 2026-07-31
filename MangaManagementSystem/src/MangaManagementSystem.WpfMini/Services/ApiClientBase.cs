@@ -1,11 +1,11 @@
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Net.Http;
 
 namespace MangaManagementSystem.WpfMini.Services;
 
-public sealed class ApiClientBase
+public class ApiClientBase
 {
     private readonly HttpClient _httpClient;
 
@@ -16,12 +16,13 @@ public sealed class ApiClientBase
 
     public void SetActorUserId(string userId)
     {
-        _httpClient.DefaultRequestHeaders.Remove("X-Actor-User-Id");
-
-        if (Guid.TryParse(userId, out _))
+        if (!Guid.TryParse(userId, out _))
         {
-            _httpClient.DefaultRequestHeaders.Add("X-Actor-User-Id", userId);
+            return;
         }
+
+        _httpClient.DefaultRequestHeaders.Remove("X-Actor-User-Id");
+        _httpClient.DefaultRequestHeaders.Add("X-Actor-User-Id", userId);
     }
 
     public void ClearActorUserId()
@@ -29,7 +30,7 @@ public sealed class ApiClientBase
         _httpClient.DefaultRequestHeaders.Remove("X-Actor-User-Id");
     }
 
-    public void SetBearerToken(string? accessToken)
+    public void SetBearerToken(string accessToken)
     {
         _httpClient.DefaultRequestHeaders.Authorization =
             string.IsNullOrWhiteSpace(accessToken)
@@ -77,10 +78,7 @@ public sealed class ApiClientBase
         CancellationToken cancellationToken = default)
     {
         using var content = new ByteArrayContent([]);
-        using var response = await _httpClient.PostAsync(
-            url,
-            content,
-            cancellationToken);
+        using var response = await _httpClient.PostAsync(url, content, cancellationToken);
 
         await EnsureSuccessAsync(response);
 
@@ -177,39 +175,31 @@ public sealed class ApiClientBase
 
             if (root.TryGetProperty("error", out var errorProperty))
             {
-                detail = errorProperty.ValueKind == JsonValueKind.String
-                    ? errorProperty.GetString()
-                    : errorProperty.TryGetProperty("message", out var nestedMessage)
-                        ? nestedMessage.GetString()
-                        : null;
+                detail = errorProperty.GetString();
             }
-
-            if (string.IsNullOrWhiteSpace(detail)
-                && root.TryGetProperty("message", out var messageProperty))
+            else if (root.TryGetProperty("message", out var messageProperty))
             {
                 detail = messageProperty.GetString();
             }
-
-            if (string.IsNullOrWhiteSpace(detail)
-                && root.TryGetProperty("detail", out var detailProperty))
+            else if (root.TryGetProperty("detail", out var detailProperty))
             {
                 detail = detailProperty.GetString();
             }
-
-            if (string.IsNullOrWhiteSpace(detail)
-                && root.TryGetProperty("title", out var titleProperty))
+            else if (root.TryGetProperty("title", out var titleProperty))
             {
                 detail = titleProperty.GetString();
             }
         }
         catch (JsonException)
         {
-            // The response was not JSON. The status-code fallback below is enough.
+            // The response body is not JSON. Fall back to the raw body/status code.
         }
 
         var message = !string.IsNullOrWhiteSpace(detail)
             ? detail
-            : $"The request failed with HTTP {(int)response.StatusCode}.";
+            : !string.IsNullOrWhiteSpace(body)
+                ? body
+                : $"The request failed with HTTP {(int)response.StatusCode}.";
 
         throw new HttpRequestException(message, null, response.StatusCode);
     }
