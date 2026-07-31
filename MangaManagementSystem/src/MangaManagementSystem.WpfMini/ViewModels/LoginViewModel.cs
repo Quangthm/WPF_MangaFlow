@@ -1,15 +1,19 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Net.Http;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using MangaManagementSystem.WpfMini.Models;
 using MangaManagementSystem.WpfMini.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace MangaManagementSystem.WpfMini.ViewModels;
 
 public partial class LoginViewModel : ObservableObject
 {
+    private const string TestPassword = "Password123!";
+
     private readonly AuthApiClient _authApi;
 
     [ObservableProperty]
@@ -38,6 +42,11 @@ public partial class LoginViewModel : ObservableObject
     [RelayCommand]
     private async Task LoginAsync()
     {
+        if (IsLoading)
+        {
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(Username))
         {
             ErrorMessage = "Username is required.";
@@ -55,23 +64,54 @@ public partial class LoginViewModel : ObservableObject
 
         try
         {
-            var response = await _authApi.LoginAsync(new LoginRequest
+            var request = new LoginRequest
             {
                 Username = Username.Trim(),
                 Password = Password
-            });
+            };
 
-            if (response is null || response.User.UserId == Guid.Empty)
+            var response = await _authApi.LoginAsync(request);
+
+            if (response is null)
             {
-                ErrorMessage = "Login failed. No valid response from server.";
+                ErrorMessage = "Login failed. The server returned no response.";
                 return;
             }
+
+            if (response.User is null ||
+                response.User.UserId == Guid.Empty)
+            {
+                ErrorMessage = "Login failed. Invalid user information.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(response.AccessToken))
+            {
+                ErrorMessage =
+                    "Login succeeded, but the server did not return a JWT token.";
+                return;
+            }
+
+            // Prefer the top-level RoleName.
+            // Fall back to User.RoleName when necessary.
+            var roleName = !string.IsNullOrWhiteSpace(response.RoleName)
+                ? response.RoleName
+                : response.User.RoleName ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(roleName))
+            {
+                ErrorMessage =
+                    "Login succeeded, but the server did not return a role.";
+                return;
+            }
+
+            var roleCode = MapRoleNameToCode(roleName);
 
             var session = new CurrentUserSession
             {
                 UserId = response.User.UserId.ToString(),
                 Username = response.User.Username,
-                RoleCode = MapRoleNameToCode(response.RoleName),
+                RoleCode = roleCode,
                 AccessToken = response.AccessToken
             };
 
@@ -79,7 +119,9 @@ public partial class LoginViewModel : ObservableObject
         }
         catch (HttpRequestException ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Cannot connect to the API."
+                : ex.Message;
         }
         catch (Exception ex)
         {
@@ -94,17 +136,30 @@ public partial class LoginViewModel : ObservableObject
     [RelayCommand]
     private async Task LoadTestUsersAsync()
     {
+        if (IsLoading)
+        {
+            return;
+        }
+
         IsLoading = true;
         ErrorMessage = string.Empty;
 
         try
         {
             var users = await _authApi.GetTestUsersAsync();
-            TestUsers = new ObservableCollection<TestUserDto>(users ?? []);
+
+            TestUsers = new ObservableCollection<TestUserDto>(
+                users ?? []);
+        }
+        catch (HttpRequestException ex)
+        {
+            ErrorMessage =
+                $"Failed to connect to the API: {ex.Message}";
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"Failed to load test users: {ex.Message}";
+            ErrorMessage =
+                $"Failed to load test users: {ex.Message}";
         }
         finally
         {
@@ -115,19 +170,22 @@ public partial class LoginViewModel : ObservableObject
     [RelayCommand]
     private async Task QuickLoginAsync(TestUserDto? user)
     {
-        if (user is null)
+        if (user is null || IsLoading)
         {
             return;
         }
 
         Username = user.Username;
-        Password = "Password123!";
+        Password = TestPassword;
+
         await LoginAsync();
     }
 
     private static string MapRoleNameToCode(string roleName)
     {
-        return roleName.Trim() switch
+        var normalizedRole = roleName.Trim();
+
+        return normalizedRole switch
         {
             "Tantou Editor" => "EDITOR",
             "Editorial Board Chief" => "BOARD_CHIEF",
@@ -135,7 +193,18 @@ public partial class LoginViewModel : ObservableObject
             "Mangaka" => "MANGAKA",
             "Assistant" => "ASSISTANT",
             "Admin" => "ADMIN",
-            _ => roleName.Trim().Replace(" ", "_").ToUpperInvariant()
+
+            // Already-normalized role codes
+            "EDITOR" => "EDITOR",
+            "BOARD_CHIEF" => "BOARD_CHIEF",
+            "BOARD_MEMBER" => "BOARD_MEMBER",
+            "MANGAKA" => "MANGAKA",
+            "ASSISTANT" => "ASSISTANT",
+            "ADMIN" => "ADMIN",
+
+            _ => normalizedRole
+                .Replace(" ", "_")
+                .ToUpperInvariant()
         };
     }
 }

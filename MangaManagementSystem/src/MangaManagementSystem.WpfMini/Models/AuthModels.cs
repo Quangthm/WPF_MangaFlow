@@ -2,9 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace MangaManagementSystem.WpfMini.Models;
 
-public class LoginRequest
+public sealed class LoginRequest
 {
-    // Main API expects "usernameOrEmail" rather than the WPF-only "username" field.
     [JsonPropertyName("usernameOrEmail")]
     public string Username { get; set; } = string.Empty;
 
@@ -12,7 +11,7 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
-public class LoginResponse
+public sealed class LoginResponse
 {
     [JsonPropertyName("user")]
     public LoginUserDto User { get; set; } = new();
@@ -27,7 +26,7 @@ public class LoginResponse
     public DateTime ExpiresAtUtc { get; set; }
 }
 
-public class LoginUserDto
+public sealed class LoginUserDto
 {
     [JsonPropertyName("userId")]
     public Guid UserId { get; set; }
@@ -39,7 +38,7 @@ public class LoginUserDto
     public string? RoleName { get; set; }
 }
 
-public class TestUserDto
+public sealed class TestUserDto
 {
     [JsonPropertyName("username")]
     public string Username { get; set; } = string.Empty;
