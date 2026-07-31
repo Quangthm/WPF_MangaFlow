@@ -102,7 +102,7 @@ VALUES
 (N'Moral Ambiguity', N'The story includes difficult choices, gray morality, or unclear right and wrong.');
 GO
 
-USE MangaManagementDB;
+USE WPFMangaManagementDB;
 GO
 
 DECLARE @PasswordHash NVARCHAR(255) =
