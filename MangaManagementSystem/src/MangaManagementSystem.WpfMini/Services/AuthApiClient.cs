@@ -13,7 +13,7 @@ public class AuthApiClient
 
     public Task<LoginResponse?> LoginAsync(LoginRequest request)
     {
-        return _api.PostAsync<LoginRequest, LoginResponse>("/api/wpf/auth/login", request);
+        return _api.PostAsync<LoginRequest, LoginResponse>("/api/auth/login", request);
     }
 
     public Task<List<TestUserDto>?> GetTestUsersAsync()

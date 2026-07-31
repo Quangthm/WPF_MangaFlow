@@ -1,4 +1,4 @@
-﻿using MangaManagementSystem.WpfMini.Interfaces;
+using MangaManagementSystem.WpfMini.Interfaces;
 using MangaManagementSystem.WpfMini.Services;
 using MangaManagementSystem.WpfMini.Services.Mangaka;
 using MangaManagementSystem.WpfMini.Services.Series;
@@ -41,6 +41,7 @@ public partial class App : System.Windows.Application
 
         services.AddSingleton<AuthApiClient>();
         services.AddSingleton<EditorApiClient>();
+        services.AddSingleton<BoardApiClient>();
         services.AddSingleton<FileUploadApiClient>();
 
         services.AddSingleton<IMangakaSeriesApiClient, MangakaSeriesApiClient>();

@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace MangaManagementSystem.WpfMini.Services;
 
@@ -25,6 +26,17 @@ public class ApiClientBase
     public void ClearActorUserId()
     {
         _httpClient.DefaultRequestHeaders.Remove("X-Actor-User-Id");
+    }
+
+    public void SetBearerToken(string accessToken)
+    {
+        _httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+    }
+
+    public void ClearBearerToken()
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
     public async Task<T?> GetAsync<T>(
