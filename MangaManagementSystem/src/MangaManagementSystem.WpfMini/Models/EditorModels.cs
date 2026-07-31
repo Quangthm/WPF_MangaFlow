@@ -229,7 +229,7 @@ public class EditorReviewActionResult
 public class GenreDto
 {
     [JsonPropertyName("genreId")]
-    public int GenreId { get; set; }
+    public Guid GenreId { get; set; }
 
     [JsonPropertyName("genreName")]
     public string GenreName { get; set; } = string.Empty;
@@ -244,7 +244,7 @@ public class GenreDto
 public class TagDto
 {
     [JsonPropertyName("tagId")]
-    public int TagId { get; set; }
+    public Guid TagId { get; set; }
 
     [JsonPropertyName("tagName")]
     public string TagName { get; set; } = string.Empty;

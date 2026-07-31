@@ -33,6 +33,15 @@ public partial class EditorProposalReviewViewModel : ObservableObject
     [ObservableProperty]
     private string _statusFilter = string.Empty; // Empty = all
 
+    /// <summary>
+    /// Called automatically by the source generator when SelectedProposal changes.
+    /// Loads the proposal detail without requiring an extra command binding in XAML.
+    /// </summary>
+    partial void OnSelectedProposalChanged(ProposalQueueItem? value)
+    {
+        SelectProposalCommand.Execute(value);
+    }
+
     // ── Detail (Detail) ──
 
     [ObservableProperty]
@@ -87,10 +96,31 @@ public partial class EditorProposalReviewViewModel : ObservableObject
         _api = api;
     }
 
-    // ── Commands ──
+    // ── Initialization (called by workspace when navigating from dashboard) ──
 
-    [RelayCommand]
-    private async Task LoadQueueAsync()
+    /// <summary>
+    /// Loads the queue and then auto-selects a specific proposal by ID. Used when the user
+    /// clicks "→ Review" on a claimed proposal from the dashboard — the queue must be fully
+    /// loaded first so the ListBox can find the matching item instance.
+    /// </summary>
+    public async Task InitializeWithProposalAsync(Guid seriesProposalId)
+    {
+        // 1. Load the queue (await it so items are materialised).
+        await LoadQueueCoreAsync();
+
+        // 2. Find the matching item in the freshly-populated queue.
+        var match = ProposalQueue.FirstOrDefault(p => p.SeriesProposalId == seriesProposalId);
+        if (match is not null)
+        {
+            SelectedProposal = match;
+            // OnSelectedProposalChanged will fire SelectProposalCommand automatically.
+        }
+    }
+
+    /// <summary>
+    /// Core queue-loading logic shared by LoadQueueAsync and InitializeWithProposalAsync.
+    /// </summary>
+    private async Task LoadQueueCoreAsync()
     {
         IsQueueLoading = true;
         QueueErrorMessage = string.Empty;
@@ -119,6 +149,14 @@ public partial class EditorProposalReviewViewModel : ObservableObject
         }
     }
 
+    // ── Commands ──
+
+    [RelayCommand]
+    private async Task LoadQueueAsync()
+    {
+        await LoadQueueCoreAsync();
+    }
+
     [RelayCommand]
     private async Task SelectProposalAsync(ProposalQueueItem? item)
     {
@@ -140,6 +178,10 @@ public partial class EditorProposalReviewViewModel : ObservableObject
 
                 // Auto-select mode: mặc định là Request Revision
                 SetRevisionMode();
+            }
+            else
+            {
+                DetailErrorMessage = $"Proposal detail not found (API returned null) for ID {item.SeriesProposalId}.";
             }
         }
         catch (Exception ex)

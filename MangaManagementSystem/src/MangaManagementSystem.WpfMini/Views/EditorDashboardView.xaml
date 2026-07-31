@@ -147,7 +147,7 @@
                                                 Background="#2980b9" Foreground="White"
                                                 BorderThickness="0" Padding="16,8" FontSize="13"
                                                 VerticalAlignment="Center" Cursor="Hand"
-                                                IsEnabled="{Binding DataContext.IsClaiming, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=false}"/>
+                                                IsEnabled="{Binding DataContext.IsClaiming, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource InverseBoolConverter}}"/>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

@@ -11,10 +11,15 @@ public class BoolToVisibilityConverter : System.Windows.Data.IValueConverter
 {
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        bool boolValue = value is bool b && b;
-        bool invert = parameter is string s &&
-                      (s.Equals("false", StringComparison.OrdinalIgnoreCase) ||
-                       s.Equals("invert", StringComparison.OrdinalIgnoreCase));
+        bool boolValue = value switch
+        {
+            bool b => b,
+            string str => !string.IsNullOrEmpty(str),
+            _ => value is not null
+        };
+        bool invert = parameter is string p &&
+                      (p.Equals("false", StringComparison.OrdinalIgnoreCase) ||
+                       p.Equals("invert", StringComparison.OrdinalIgnoreCase));
 
         if (invert)
             boolValue = !boolValue;
